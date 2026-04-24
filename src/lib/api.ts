@@ -1,6 +1,7 @@
 import { env } from "./env";
 import type {
   ApiErrorPayload,
+  CreateReservationInput,
   Employee,
   Reservation,
   Room,
@@ -65,4 +66,11 @@ export function getActiveEmployees() {
 
 export function getActiveReservations() {
   return apiFetch<Reservation[]>("/api/reservations/active");
+}
+
+export function createReservation(input: CreateReservationInput) {
+  return apiFetch<Reservation>("/api/reservations", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }

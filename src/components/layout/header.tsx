@@ -4,6 +4,7 @@ const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/rooms", label: "Rooms" },
   { href: "/reservations", label: "Reservations" },
+  { href: "/reservations/new", label: "New Reservation" },
   { href: "/employees", label: "Employees" },
 ];
 

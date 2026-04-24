@@ -37,6 +37,16 @@ export type Reservation = {
   roomName: string;
 };
 
+export type CreateReservationInput = {
+  title: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  attendeeCount: number;
+  employeeId: number;
+  roomId: number;
+};
+
 export type ApiErrorPayload = {
   timestamp?: string;
   status?: number;
