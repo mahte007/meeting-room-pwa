@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Reservation } from "@/lib/types";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 
 type ReservationsListProps = {
   reservations: Reservation[];
@@ -35,6 +36,9 @@ export function ReservationsList({
   onStatusChange,
   isMutating = false,
 }: ReservationsListProps) {
+  const isOnline = useOnlineStatus();
+  const actionsDisabled = isMutating || !isOnline;
+
   if (!reservations.length) {
     return (
       <div className="rounded-2xl border bg-white p-6">
@@ -60,7 +64,7 @@ export function ReservationsList({
 
             <span
               className={`rounded-full px-2 py-1 text-xs font-medium ${getStatusClasses(
-                reservation.status
+                reservation.status,
               )}`}
             >
               {reservation.status}
@@ -90,19 +94,25 @@ export function ReservationsList({
             </div>
           </dl>
 
+          {!isOnline && (
+            <p className="mt-5 text-sm text-amber-700">
+              Actions are disabled while offline.
+            </p>
+          )}
+
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link
+            <a
               href={`/reservations/${reservation.id}/edit`}
-              className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50"
+              className={`rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 ${actionsDisabled && "opacity-60 cursor-default pointer-events-none"}`}
             >
               Edit
-            </Link>
+            </a>
 
             {reservation.status !== "APPROVED" && (
               <button
-                disabled={isMutating}
+                disabled={actionsDisabled}
                 onClick={() => onStatusChange?.(reservation.id, "APPROVED")}
-                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
+                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
               >
                 Approve
               </button>
@@ -110,9 +120,9 @@ export function ReservationsList({
 
             {reservation.status !== "CANCELLED" && (
               <button
-                disabled={isMutating}
+                disabled={actionsDisabled}
                 onClick={() => onStatusChange?.(reservation.id, "CANCELLED")}
-                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
+                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
               >
                 Cancel
               </button>
@@ -120,18 +130,18 @@ export function ReservationsList({
 
             {reservation.status !== "COMPLETED" && (
               <button
-                disabled={isMutating}
+                disabled={actionsDisabled}
                 onClick={() => onStatusChange?.(reservation.id, "COMPLETED")}
-                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
+                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
               >
                 Complete
               </button>
             )}
 
             <button
-              disabled={isMutating}
+              disabled={actionsDisabled}
               onClick={() => onDelete?.(reservation.id)}
-              className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+              className="rounded-xl border border-red-700 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 cursor-pointer"
             >
               Delete
             </button>

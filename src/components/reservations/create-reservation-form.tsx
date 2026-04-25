@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { CreateReservationInput, Employee, Room } from "@/lib/types";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 
 type CreateReservationFormProps = {
   rooms: Room[];
@@ -34,6 +35,9 @@ export function CreateReservationForm({
   isSubmitting,
   submitError,
 }: CreateReservationFormProps) {
+  const isOnline = useOnlineStatus();
+  const isDisabled = isSubmitting || !isOnline;
+
   const initialStart = useMemo(() => {
     if (initialValues?.startTime) {
       return initialValues.startTime.slice(0, 16);
@@ -74,6 +78,10 @@ export function CreateReservationForm({
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (!isOnline) {
+      return;
+    }
 
     if (!employeeId || !roomId) {
       return;
@@ -212,9 +220,17 @@ export function CreateReservationForm({
       )}
 
       <div className="flex justify-end">
+        {!isOnline && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm text-amber-800">
+              You are offline. Reservation changes are disabled because the
+              backend must validate room availability and conflicts.
+            </p>
+          </div>
+        )}
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isDisabled}
           className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? "Saving..." : submitLabel}

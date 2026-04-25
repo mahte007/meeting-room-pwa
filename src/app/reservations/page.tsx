@@ -10,8 +10,10 @@ import {
   updateReservationStatus,
 } from "@/lib/api";
 import type { ReservationStatus } from "@/lib/types";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 
 export default function ReservationsPage() {
+  const isOnline = useOnlineStatus();
   const queryClient = useQueryClient();
 
   const {
@@ -41,7 +43,7 @@ export default function ReservationsPage() {
 
   function handleDelete(id: number) {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this reservation?"
+      "Are you sure you want to delete this reservation?",
     );
 
     if (!confirmed) return;
@@ -65,12 +67,21 @@ export default function ReservationsPage() {
           </p>
         </div>
 
-        <Link
-          href="/reservations/new"
-          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
-        >
-          New reservation
-        </Link>
+        {isOnline ? (
+          <Link
+            href="/reservations/new"
+            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
+          >
+            New reservation
+          </Link>
+        ) : (
+          <button
+            disabled
+            className="rounded-xl bg-slate-300 px-4 py-2 text-sm font-medium text-white"
+          >
+            New reservation
+          </button>
+        )}
       </div>
 
       {mutationError && (
