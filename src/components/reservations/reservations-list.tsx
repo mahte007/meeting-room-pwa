@@ -1,9 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import type { Reservation } from "@/lib/types";
 
 type ReservationsListProps = {
   reservations: Reservation[];
+  onDelete?: (id: number) => void;
+  onStatusChange?: (id: number, status: Reservation["status"]) => void;
+  isMutating?: boolean;
 };
 
 function formatDateTime(value: string) {
@@ -25,7 +29,12 @@ function getStatusClasses(status: Reservation["status"]) {
   }
 }
 
-export function ReservationsList({ reservations }: ReservationsListProps) {
+export function ReservationsList({
+  reservations,
+  onDelete,
+  onStatusChange,
+  isMutating = false,
+}: ReservationsListProps) {
   if (!reservations.length) {
     return (
       <div className="rounded-2xl border bg-white p-6">
@@ -79,11 +88,54 @@ export function ReservationsList({ reservations }: ReservationsListProps) {
               <dt className="font-medium">Attendees</dt>
               <dd>{reservation.attendeeCount}</dd>
             </div>
-            <div className="flex justify-between gap-4">
-              <dt className="font-medium">Archived</dt>
-              <dd>{reservation.archived ? "Yes" : "No"}</dd>
-            </div>
           </dl>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              href={`/reservations/${reservation.id}/edit`}
+              className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50"
+            >
+              Edit
+            </Link>
+
+            {reservation.status !== "APPROVED" && (
+              <button
+                disabled={isMutating}
+                onClick={() => onStatusChange?.(reservation.id, "APPROVED")}
+                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
+              >
+                Approve
+              </button>
+            )}
+
+            {reservation.status !== "CANCELLED" && (
+              <button
+                disabled={isMutating}
+                onClick={() => onStatusChange?.(reservation.id, "CANCELLED")}
+                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            )}
+
+            {reservation.status !== "COMPLETED" && (
+              <button
+                disabled={isMutating}
+                onClick={() => onStatusChange?.(reservation.id, "COMPLETED")}
+                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
+              >
+                Complete
+              </button>
+            )}
+
+            <button
+              disabled={isMutating}
+              onClick={() => onDelete?.(reservation.id)}
+              className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+            >
+              Delete
+            </button>
+          </div>
         </article>
       ))}
     </div>

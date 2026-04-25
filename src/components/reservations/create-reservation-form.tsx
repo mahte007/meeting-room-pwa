@@ -6,6 +6,8 @@ import type { CreateReservationInput, Employee, Room } from "@/lib/types";
 type CreateReservationFormProps = {
   rooms: Room[];
   employees: Employee[];
+  initialValues?: Partial<CreateReservationInput>;
+  submitLabel?: string;
   onSubmit: (values: CreateReservationInput) => Promise<void>;
   isSubmitting: boolean;
   submitError: string | null;
@@ -26,31 +28,49 @@ function toLocalDateTimeInputValue(date: Date) {
 export function CreateReservationForm({
   rooms,
   employees,
+  initialValues,
+  submitLabel = "Create reservation",
   onSubmit,
   isSubmitting,
   submitError,
 }: CreateReservationFormProps) {
   const initialStart = useMemo(() => {
+    if (initialValues?.startTime) {
+      return initialValues.startTime.slice(0, 16);
+    }
+
     const now = new Date();
     now.setMinutes(0, 0, 0);
     now.setHours(now.getHours() + 1);
     return toLocalDateTimeInputValue(now);
-  }, []);
+  }, [initialValues?.startTime]);
 
   const initialEnd = useMemo(() => {
+    if (initialValues?.endTime) {
+      return initialValues.endTime.slice(0, 16);
+    }
+
     const later = new Date();
     later.setMinutes(0, 0, 0);
     later.setHours(later.getHours() + 2);
     return toLocalDateTimeInputValue(later);
-  }, []);
+  }, [initialValues?.endTime]);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(initialValues?.title ?? "");
+  const [description, setDescription] = useState(
+    initialValues?.description ?? "",
+  );
   const [startTime, setStartTime] = useState(initialStart);
   const [endTime, setEndTime] = useState(initialEnd);
-  const [attendeeCount, setAttendeeCount] = useState(1);
-  const [employeeId, setEmployeeId] = useState<number | "">("");
-  const [roomId, setRoomId] = useState<number | "">("");
+  const [attendeeCount, setAttendeeCount] = useState(
+    initialValues?.attendeeCount ?? 1,
+  );
+  const [employeeId, setEmployeeId] = useState<number | "">(
+    initialValues?.employeeId ?? "",
+  );
+  const [roomId, setRoomId] = useState<number | "">(
+    initialValues?.roomId ?? "",
+  );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -71,7 +91,10 @@ export function CreateReservationForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm"
+    >
       <div className="grid gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -166,7 +189,9 @@ export function CreateReservationForm({
           </label>
           <select
             value={roomId}
-            onChange={(e) => setRoomId(e.target.value ? Number(e.target.value) : "")}
+            onChange={(e) =>
+              setRoomId(e.target.value ? Number(e.target.value) : "")
+            }
             required
             className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
           >
@@ -192,7 +217,7 @@ export function CreateReservationForm({
           disabled={isSubmitting}
           className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? "Creating..." : "Create reservation"}
+          {isSubmitting ? "Saving..." : submitLabel}
         </button>
       </div>
     </form>

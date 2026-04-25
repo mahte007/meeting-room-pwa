@@ -4,8 +4,19 @@ import type {
   CreateReservationInput,
   Employee,
   Reservation,
+  ReservationStatus,
   Room,
 } from "./types";
+import {
+  getActiveRoomsMock,
+  getActiveEmployeesMock,
+  getActiveReservationsMock,
+  createReservationMock,
+  updateReservationMock,
+  updateReservationStatusMock,
+  deleteReservationMock,
+  getReservationMock,
+} from "./mock-api";
 
 export class ApiError extends Error {
   status: number;
@@ -57,20 +68,55 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 }
 
 export function getActiveRooms() {
+  if (env.useMock) return getActiveRoomsMock();
   return apiFetch<Room[]>("/api/rooms/active");
 }
 
 export function getActiveEmployees() {
+  if (env.useMock) return getActiveEmployeesMock();
   return apiFetch<Employee[]>("/api/employees/active");
 }
 
 export function getActiveReservations() {
+  if (env.useMock) return getActiveReservationsMock();
   return apiFetch<Reservation[]>("/api/reservations/active");
 }
 
 export function createReservation(input: CreateReservationInput) {
+  if (env.useMock) return createReservationMock(input);
   return apiFetch<Reservation>("/api/reservations", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export function getReservation(id: number) {
+  if (env.useMock) return getReservationMock(id);
+  return apiFetch<Reservation>(`/api/reservations/${id}`);
+}
+
+export function updateReservation(id: number, input: CreateReservationInput) {
+  if (env.useMock) return updateReservationMock(id, input);
+  return apiFetch<Reservation>(`/api/reservations/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input)
+  });
+}
+
+export function updateReservationStatus(
+  id: number,
+  status: ReservationStatus
+) {
+  if (env.useMock) return updateReservationStatusMock(id, status);
+  return apiFetch<Reservation>(`/api/reservations/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function deleteReservation(id: number) {
+  if (env.useMock) return deleteReservationMock(id);
+  return apiFetch<void>(`/api/reservations/${id}`, {
+    method: "DELETE",
   });
 }
