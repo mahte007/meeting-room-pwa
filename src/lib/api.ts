@@ -16,6 +16,8 @@ import {
   updateReservationStatusMock,
   deleteReservationMock,
   getReservationMock,
+  getRoomMock,
+  getReservationsByRoomMock,
 } from "./mock-api";
 
 export class ApiError extends Error {
@@ -40,13 +42,18 @@ async function parseError(response: Response): Promise<never> {
   }
 
   throw new ApiError(
-    payload?.message || payload?.error || `Request failed with status ${response.status}`,
+    payload?.message ||
+      payload?.error ||
+      `Request failed with status ${response.status}`,
     response.status,
-    payload
+    payload,
   );
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const response = await fetch(`${env.apiBaseUrl}${path}`, {
     ...init,
     headers: {
@@ -99,14 +106,11 @@ export function updateReservation(id: number, input: CreateReservationInput) {
   if (env.useMock) return updateReservationMock(id, input);
   return apiFetch<Reservation>(`/api/reservations/${id}`, {
     method: "PUT",
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
   });
 }
 
-export function updateReservationStatus(
-  id: number,
-  status: ReservationStatus
-) {
+export function updateReservationStatus(id: number, status: ReservationStatus) {
   if (env.useMock) return updateReservationStatusMock(id, status);
   return apiFetch<Reservation>(`/api/reservations/${id}/status`, {
     method: "PATCH",
@@ -119,4 +123,14 @@ export function deleteReservation(id: number) {
   return apiFetch<void>(`/api/reservations/${id}`, {
     method: "DELETE",
   });
+}
+
+export function getRoom(id: number) {
+  if (env.useMock) return getRoomMock(id);
+  return apiFetch<Room>(`/api/rooms/${id}`);
+}
+
+export function getReservationsByRoom(roomId: number) {
+  if (env.useMock) return getReservationsByRoomMock(roomId);
+  return apiFetch<Reservation[]>(`/api/reservations/room/${roomId}`);
 }

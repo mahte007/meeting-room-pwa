@@ -94,3 +94,21 @@ export async function deleteReservationMock(id: number) {
 
   reservations = reservations.filter((r) => r.id !== id);
 }
+
+export async function getRoomMock(id: number) {
+  await delay();
+
+  const room = mockRooms.find((room) => room.id === id);
+
+  if (!room) {
+    throw new Error("Room not found");
+  }
+
+  return room;
+}
+
+export async function getReservationsByRoomMock(roomId: number) {
+  await delay();
+
+  return reservations.filter((reservation) => reservation.roomId === roomId);
+}
