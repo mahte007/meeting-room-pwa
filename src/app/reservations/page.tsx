@@ -1,20 +1,43 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ReservationsList } from "@/components/reservations/reservations-list";
 import { QueryState } from "@/components/ui/query-state";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import {
   deleteReservation,
   getActiveReservations,
   updateReservationStatus,
 } from "@/lib/api";
 import type { ReservationStatus } from "@/lib/types";
-import { useOnlineStatus } from "@/hooks/use-online-status";
+
+function getSuccessMessage(success: string | null) {
+  switch (success) {
+    case "created":
+      return "Reservation created successfully.";
+    case "updated":
+      return "Reservation updated successfully.";
+    default:
+      return null;
+  }
+}
 
 export default function ReservationsPage() {
-  const isOnline = useOnlineStatus();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const isOnline = useOnlineStatus();
+
+  const [successMessage, setSuccessMessage] = useState<string | null>(
+    getSuccessMessage(searchParams.get("success"))
+  );
+
+  useEffect(() => {
+    const message = getSuccessMessage(searchParams.get("success"));
+    setSuccessMessage(message);
+  }, [searchParams]);
 
   const {
     data: reservations = [],
@@ -29,29 +52,33 @@ export default function ReservationsPage() {
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: ReservationStatus }) =>
       updateReservationStatus(id, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reservations"] });
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      setSuccessMessage(`Reservation status changed to ${variables.status}.`);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteReservation,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reservations"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      setSuccessMessage("Reservation deleted successfully.");
     },
   });
 
   function handleDelete(id: number) {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this reservation?",
+      "Are you sure you want to delete this reservation?"
     );
 
     if (!confirmed) return;
 
+    setSuccessMessage(null);
     deleteMutation.mutate(id);
   }
 
   function handleStatusChange(id: number, status: ReservationStatus) {
+    setSuccessMessage(null);
     statusMutation.mutate({ id, status });
   }
 
@@ -83,6 +110,12 @@ export default function ReservationsPage() {
           </button>
         )}
       </div>
+
+      {successMessage && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+          {successMessage}
+        </div>
+      )}
 
       {mutationError && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6">

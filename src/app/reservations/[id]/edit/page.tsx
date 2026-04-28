@@ -47,7 +47,7 @@ export default function EditReservationPage() {
         queryClient.invalidateQueries({ queryKey: ["rooms"] }),
       ]);
 
-      router.push("/reservations");
+      router.push("/reservations?success=updated");
     },
     onError: (error) => {
       if (error instanceof ApiError) {

@@ -36,7 +36,7 @@ export default function NewReservationPage() {
         queryClient.invalidateQueries({ queryKey: ["rooms", "active"] }),
       ]);
 
-      router.push("/reservations");
+      router.push("/reservations?success=created");
     },
     onError: (error) => {
       if (error instanceof ApiError) {
