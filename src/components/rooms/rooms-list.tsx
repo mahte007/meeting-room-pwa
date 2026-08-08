@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Room } from "@/lib/types";
 
 type RoomsListProps = {
@@ -49,6 +50,15 @@ export function RoomsList({ rooms }: RoomsListProps) {
               <dd>{room.hasProjector ? "Yes" : "No"}</dd>
             </div>
           </dl>
+
+          <div className="mt-5">
+            <Link
+              href={`/rooms/${room.id}`}
+              className="inline-flex rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50"
+            >
+              View details
+            </Link>
+          </div>
         </article>
       ))}
     </div>

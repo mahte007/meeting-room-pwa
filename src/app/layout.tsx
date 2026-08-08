@@ -3,6 +3,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Providers } from "./providers";
 import { ServiceWorkerRegister } from "./sw-register";
+import { OfflineBanner } from "@/components/layout/offline-banner";
 
 export const metadata: Metadata = {
   title: "Meeting Room Reservation",
@@ -20,6 +21,7 @@ export default function RootLayout({
         <Providers>
           <ServiceWorkerRegister />
           <Header />
+          <OfflineBanner />
           <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
         </Providers>
       </body>

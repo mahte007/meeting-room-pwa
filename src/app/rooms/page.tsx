@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { RoomsList } from "@/components/rooms/rooms-list";
 import { QueryState } from "@/components/ui/query-state";
 import { getActiveRooms } from "@/lib/api";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 
 export default function RoomsPage() {
   const {
@@ -17,23 +18,25 @@ export default function RoomsPage() {
   });
 
   return (
-    <section className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Rooms</h1>
-        <p className="mt-2 text-slate-700">
-          View active meeting rooms from the Spring Boot backend.
-        </p>
-      </div>
+    <ProtectedRoute allowedRoles={["ADMIN", "EMPLOYEE"]}>
+      <section className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Rooms</h1>
+          <p className="mt-2 text-slate-700">
+            View active meeting rooms from the Spring Boot backend.
+          </p>
+        </div>
 
-      <QueryState
-        isLoading={isLoading}
-        isError={isError}
-        error={error}
-        loadingText="Loading rooms..."
-        errorTitle="Failed to load rooms."
-      />
+        <QueryState
+          isLoading={isLoading}
+          isError={isError}
+          error={error}
+          loadingText="Loading rooms..."
+          errorTitle="Failed to load rooms."
+        />
 
-      {!isLoading && !isError && <RoomsList rooms={rooms} />}
-    </section>
+        {!isLoading && !isError && <RoomsList rooms={rooms} />}
+      </section>
+    </ProtectedRoute>
   );
 }

@@ -1,9 +1,14 @@
 "use client";
 
 import type { Reservation } from "@/lib/types";
+import { useOnlineStatus } from "@/hooks/use-online-status";
+import { useAuth } from "@/contexts/auth-context";
 
 type ReservationsListProps = {
   reservations: Reservation[];
+  onDelete?: (id: number) => void;
+  onStatusChange?: (id: number, status: Reservation["status"]) => void;
+  isMutating?: boolean;
 };
 
 function formatDateTime(value: string) {
@@ -25,7 +30,18 @@ function getStatusClasses(status: Reservation["status"]) {
   }
 }
 
-export function ReservationsList({ reservations }: ReservationsListProps) {
+export function ReservationsList({
+  reservations,
+  onDelete,
+  onStatusChange,
+  isMutating = false,
+}: ReservationsListProps) {
+  const isOnline = useOnlineStatus();
+  const actionsDisabled = isMutating || !isOnline;
+
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+
   if (!reservations.length) {
     return (
       <div className="rounded-2xl border bg-white p-6">
@@ -51,7 +67,7 @@ export function ReservationsList({ reservations }: ReservationsListProps) {
 
             <span
               className={`rounded-full px-2 py-1 text-xs font-medium ${getStatusClasses(
-                reservation.status
+                reservation.status,
               )}`}
             >
               {reservation.status}
@@ -79,11 +95,60 @@ export function ReservationsList({ reservations }: ReservationsListProps) {
               <dt className="font-medium">Attendees</dt>
               <dd>{reservation.attendeeCount}</dd>
             </div>
-            <div className="flex justify-between gap-4">
-              <dt className="font-medium">Archived</dt>
-              <dd>{reservation.archived ? "Yes" : "No"}</dd>
-            </div>
           </dl>
+
+          {!isOnline && (
+            <p className="mt-5 text-sm text-amber-700">
+              Actions are disabled while offline.
+            </p>
+          )}
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <a
+              href={`/reservations/${reservation.id}/edit`}
+              className={`rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 ${actionsDisabled && "opacity-60 cursor-default pointer-events-none"}`}
+            >
+              Edit
+            </a>
+
+            {isAdmin && reservation.status !== "APPROVED" && (
+              <button
+                disabled={actionsDisabled}
+                onClick={() => onStatusChange?.(reservation.id, "APPROVED")}
+                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
+              >
+                Approve
+              </button>
+            )}
+
+            {isAdmin && reservation.status !== "CANCELLED" && (
+              <button
+                disabled={actionsDisabled}
+                onClick={() => onStatusChange?.(reservation.id, "CANCELLED")}
+                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
+              >
+                Cancel
+              </button>
+            )}
+
+            {isAdmin && reservation.status !== "COMPLETED" && (
+              <button
+                disabled={actionsDisabled}
+                onClick={() => onStatusChange?.(reservation.id, "COMPLETED")}
+                className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
+              >
+                Complete
+              </button>
+            )}
+
+            <button
+              disabled={actionsDisabled}
+              onClick={() => onDelete?.(reservation.id)}
+              className="rounded-xl border border-red-700 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 cursor-pointer"
+            >
+              Delete
+            </button>
+          </div>
         </article>
       ))}
     </div>
