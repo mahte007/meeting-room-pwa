@@ -13,6 +13,7 @@ import {
   updateReservationStatus,
 } from "@/lib/api";
 import type { ReservationStatus } from "@/lib/types";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 
 function getSuccessMessage(success: string | null) {
   switch (success) {
@@ -31,7 +32,7 @@ export default function ReservationsPage() {
   const isOnline = useOnlineStatus();
 
   const [successMessage, setSuccessMessage] = useState<string | null>(
-    getSuccessMessage(searchParams.get("success"))
+    getSuccessMessage(searchParams.get("success")),
   );
 
   useEffect(() => {
@@ -68,7 +69,7 @@ export default function ReservationsPage() {
 
   function handleDelete(id: number) {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this reservation?"
+      "Are you sure you want to delete this reservation?",
     );
 
     if (!confirmed) return;
@@ -85,65 +86,67 @@ export default function ReservationsPage() {
   const mutationError = statusMutation.error || deleteMutation.error;
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Reservations</h1>
-          <p className="mt-2 text-slate-700">
-            View and manage active reservations from the Spring Boot backend.
-          </p>
+    <ProtectedRoute allowedRoles={["ADMIN", "EMPLOYEE"]}>
+      <section className="space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Reservations</h1>
+            <p className="mt-2 text-slate-700">
+              View and manage active reservations from the Spring Boot backend.
+            </p>
+          </div>
+
+          {isOnline ? (
+            <Link
+              href="/reservations/new"
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
+            >
+              New reservation
+            </Link>
+          ) : (
+            <button
+              disabled
+              className="rounded-xl bg-slate-300 px-4 py-2 text-sm font-medium text-white"
+            >
+              New reservation
+            </button>
+          )}
         </div>
 
-        {isOnline ? (
-          <Link
-            href="/reservations/new"
-            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
-          >
-            New reservation
-          </Link>
-        ) : (
-          <button
-            disabled
-            className="rounded-xl bg-slate-300 px-4 py-2 text-sm font-medium text-white"
-          >
-            New reservation
-          </button>
+        {successMessage && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+            {successMessage}
+          </div>
         )}
-      </div>
 
-      {successMessage && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-          {successMessage}
-        </div>
-      )}
+        {mutationError && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+            <p className="font-medium text-red-700">Action failed.</p>
+            <p className="mt-1 text-sm text-red-600">
+              {mutationError instanceof Error
+                ? mutationError.message
+                : "Unknown error"}
+            </p>
+          </div>
+        )}
 
-      {mutationError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-          <p className="font-medium text-red-700">Action failed.</p>
-          <p className="mt-1 text-sm text-red-600">
-            {mutationError instanceof Error
-              ? mutationError.message
-              : "Unknown error"}
-          </p>
-        </div>
-      )}
-
-      <QueryState
-        isLoading={isLoading}
-        isError={isError}
-        error={error}
-        loadingText="Loading reservations..."
-        errorTitle="Failed to load reservations."
-      />
-
-      {!isLoading && !isError && (
-        <ReservationsList
-          reservations={reservations}
-          onDelete={handleDelete}
-          onStatusChange={handleStatusChange}
-          isMutating={statusMutation.isPending || deleteMutation.isPending}
+        <QueryState
+          isLoading={isLoading}
+          isError={isError}
+          error={error}
+          loadingText="Loading reservations..."
+          errorTitle="Failed to load reservations."
         />
-      )}
-    </section>
+
+        {!isLoading && !isError && (
+          <ReservationsList
+            reservations={reservations}
+            onDelete={handleDelete}
+            onStatusChange={handleStatusChange}
+            isMutating={statusMutation.isPending || deleteMutation.isPending}
+          />
+        )}
+      </section>
+    </ProtectedRoute>
   );
 }

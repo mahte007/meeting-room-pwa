@@ -13,6 +13,7 @@ import {
   updateReservation,
 } from "@/lib/api";
 import type { CreateReservationInput } from "@/lib/types";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 
 export default function EditReservationPage() {
   const params = useParams<{ id: string }>();
@@ -60,7 +61,9 @@ export default function EditReservationPage() {
   });
 
   const isLoading =
-    reservationQuery.isLoading || roomsQuery.isLoading || employeesQuery.isLoading;
+    reservationQuery.isLoading ||
+    roomsQuery.isLoading ||
+    employeesQuery.isLoading;
 
   const isError =
     reservationQuery.isError || roomsQuery.isError || employeesQuery.isError;
@@ -101,33 +104,35 @@ export default function EditReservationPage() {
   }
 
   return (
-    <section className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Edit Reservation</h1>
-        <p className="mt-2 text-slate-700">
-          Update reservation data and let the backend validate conflicts.
-        </p>
-      </div>
+    <ProtectedRoute allowedRoles={["ADMIN", "EMPLOYEE"]}>
+      <section className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Edit Reservation</h1>
+          <p className="mt-2 text-slate-700">
+            Update reservation data and let the backend validate conflicts.
+          </p>
+        </div>
 
-      <QueryState
-        isLoading={isLoading}
-        isError={isError}
-        error={combinedError}
-        loadingText="Loading reservation..."
-        errorTitle="Failed to load reservation."
-      />
-
-      {!isLoading && !isError && initialValues && (
-        <CreateReservationForm
-          rooms={roomsQuery.data ?? []}
-          employees={employeesQuery.data ?? []}
-          initialValues={initialValues}
-          submitLabel="Save changes"
-          onSubmit={handleSubmit}
-          isSubmitting={mutation.isPending}
-          submitError={submitError}
+        <QueryState
+          isLoading={isLoading}
+          isError={isError}
+          error={combinedError}
+          loadingText="Loading reservation..."
+          errorTitle="Failed to load reservation."
         />
-      )}
-    </section>
+
+        {!isLoading && !isError && initialValues && (
+          <CreateReservationForm
+            rooms={roomsQuery.data ?? []}
+            employees={employeesQuery.data ?? []}
+            initialValues={initialValues}
+            submitLabel="Save changes"
+            onSubmit={handleSubmit}
+            isSubmitting={mutation.isPending}
+            submitError={submitError}
+          />
+        )}
+      </section>
+    </ProtectedRoute>
   );
 }

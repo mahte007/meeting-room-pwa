@@ -12,8 +12,12 @@ import {
   getActiveRooms,
 } from "@/lib/api";
 import type { CreateReservationInput } from "@/lib/types";
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function NewReservationPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const router = useRouter();
   const queryClient = useQueryClient();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -26,6 +30,7 @@ export default function NewReservationPage() {
   const employeesQuery = useQuery({
     queryKey: ["employees", "active"],
     queryFn: getActiveEmployees,
+    enabled: isAdmin,
   });
 
   const mutation = useMutation({
@@ -48,12 +53,17 @@ export default function NewReservationPage() {
     },
   });
 
-  const isLoading = roomsQuery.isLoading || employeesQuery.isLoading;
-  const isError = roomsQuery.isError || employeesQuery.isError;
+  const isLoading =
+    roomsQuery.isLoading || (isAdmin && employeesQuery.isLoading);
+
+  const isError = roomsQuery.isError || (isAdmin && employeesQuery.isError);
   const combinedError = roomsQuery.error || employeesQuery.error;
 
   const rooms = useMemo(() => roomsQuery.data ?? [], [roomsQuery.data]);
-  const employees = useMemo(() => employeesQuery.data ?? [], [employeesQuery.data]);
+  const employees = useMemo(
+    () => employeesQuery.data ?? [],
+    [employeesQuery.data],
+  );
 
   async function handleSubmit(values: CreateReservationInput) {
     setSubmitError(null);
@@ -61,31 +71,34 @@ export default function NewReservationPage() {
   }
 
   return (
-    <section className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">New Reservation</h1>
-        <p className="mt-2 text-slate-700">
-          Create a new reservation using active rooms and employees from the backend.
-        </p>
-      </div>
+    <ProtectedRoute allowedRoles={["ADMIN", "EMPLOYEE"]}>
+      <section className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">New Reservation</h1>
+          <p className="mt-2 text-slate-700">
+            Create a new reservation using active rooms and employees from the
+            backend.
+          </p>
+        </div>
 
-      <QueryState
-        isLoading={isLoading}
-        isError={isError}
-        error={combinedError}
-        loadingText="Loading reservation form data..."
-        errorTitle="Failed to load form data."
-      />
-
-      {!isLoading && !isError && (
-        <CreateReservationForm
-          rooms={rooms}
-          employees={employees}
-          onSubmit={handleSubmit}
-          isSubmitting={mutation.isPending}
-          submitError={submitError}
+        <QueryState
+          isLoading={isLoading}
+          isError={isError}
+          error={combinedError}
+          loadingText="Loading reservation form data..."
+          errorTitle="Failed to load form data."
         />
-      )}
-    </section>
+
+        {!isLoading && !isError && (
+          <CreateReservationForm
+            rooms={rooms}
+            employees={employees}
+            onSubmit={handleSubmit}
+            isSubmitting={mutation.isPending}
+            submitError={submitError}
+          />
+        )}
+      </section>
+    </ProtectedRoute>
   );
 }

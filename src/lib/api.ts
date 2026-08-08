@@ -6,6 +6,8 @@ import type {
   Reservation,
   ReservationStatus,
   Room,
+  LoginInput,
+  LoginResponse,
 } from "./types";
 import {
   getActiveRoomsMock,
@@ -19,6 +21,7 @@ import {
   getRoomMock,
   getReservationsByRoomMock,
 } from "./mock-api";
+import { getStoredAuthUser } from "./auth-storage";
 
 export class ApiError extends Error {
   status: number;
@@ -54,10 +57,13 @@ export async function apiFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
+  const authUser = getStoredAuthUser();
+
   const response = await fetch(`${env.apiBaseUrl}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(authUser?.token ? { Authorization: `Bearer ${authUser.token}` } : {}),
       ...(init?.headers ?? {}),
     },
     cache: "no-store",
@@ -72,6 +78,21 @@ export async function apiFetch<T>(
   }
 
   return response.json() as Promise<T>;
+}
+
+export function login(input: LoginInput) {
+  if (env.useMock) {
+    return Promise.resolve<LoginResponse>({
+      token: "mock-jwt-token",
+      username: input.username,
+      role: input.username === "admin" ? "ADMIN" : "EMPLOYEE",
+    });
+  }
+
+  return apiFetch<LoginResponse>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function getActiveRooms() {

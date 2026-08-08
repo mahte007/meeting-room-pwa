@@ -43,7 +43,7 @@ export type CreateReservationInput = {
   startTime: string;
   endTime: string;
   attendeeCount: number;
-  employeeId: number;
+  employeeId?: number;
   roomId: number;
 };
 
@@ -54,4 +54,23 @@ export type ApiErrorPayload = {
   message?: string;
   path?: string;
   validationErrors?: Record<string, string>;
+};
+
+export type UserRole = "ADMIN" | "EMPLOYEE";
+
+export type LoginInput = {
+  username: string;
+  password: string;
+};
+
+export type LoginResponse = {
+  token: string;
+  username: string;
+  role: UserRole;
+};
+
+export type AuthUser = {
+  username: string;
+  role: UserRole;
+  token: string;
 };

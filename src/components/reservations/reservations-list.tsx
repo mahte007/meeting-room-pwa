@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import type { Reservation } from "@/lib/types";
 import { useOnlineStatus } from "@/hooks/use-online-status";
+import { useAuth } from "@/contexts/auth-context";
 
 type ReservationsListProps = {
   reservations: Reservation[];
@@ -38,6 +38,9 @@ export function ReservationsList({
 }: ReservationsListProps) {
   const isOnline = useOnlineStatus();
   const actionsDisabled = isMutating || !isOnline;
+
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
 
   if (!reservations.length) {
     return (
@@ -108,7 +111,7 @@ export function ReservationsList({
               Edit
             </a>
 
-            {reservation.status !== "APPROVED" && (
+            {isAdmin && reservation.status !== "APPROVED" && (
               <button
                 disabled={actionsDisabled}
                 onClick={() => onStatusChange?.(reservation.id, "APPROVED")}
@@ -118,7 +121,7 @@ export function ReservationsList({
               </button>
             )}
 
-            {reservation.status !== "CANCELLED" && (
+            {isAdmin && reservation.status !== "CANCELLED" && (
               <button
                 disabled={actionsDisabled}
                 onClick={() => onStatusChange?.(reservation.id, "CANCELLED")}
@@ -128,7 +131,7 @@ export function ReservationsList({
               </button>
             )}
 
-            {reservation.status !== "COMPLETED" && (
+            {isAdmin && reservation.status !== "COMPLETED" && (
               <button
                 disabled={actionsDisabled}
                 onClick={() => onStatusChange?.(reservation.id, "COMPLETED")}

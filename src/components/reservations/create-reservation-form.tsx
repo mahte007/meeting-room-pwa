@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import type { CreateReservationInput, Employee, Room } from "@/lib/types";
+import { useAuth } from "@/contexts/auth-context";
 
 type CreateReservationFormProps = {
   rooms: Room[];
@@ -14,13 +15,15 @@ type CreateReservationFormProps = {
   submitError: string | null;
 };
 
-type FormErrors = Partial<Record<keyof CreateReservationInput | "form", string>>;
+type FormErrors = Partial<
+  Record<keyof CreateReservationInput | "form", string>
+>;
 
 function toLocalDateTimeInputValue(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
 
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate()
+    date.getDate(),
   )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
@@ -37,6 +40,8 @@ export function CreateReservationForm({
   isSubmitting,
   submitError,
 }: CreateReservationFormProps) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const isOnline = useOnlineStatus();
 
   const initialStart = useMemo(() => {
@@ -59,18 +64,18 @@ export function CreateReservationForm({
 
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [description, setDescription] = useState(
-    initialValues?.description ?? ""
+    initialValues?.description ?? "",
   );
   const [startTime, setStartTime] = useState(initialStart);
   const [endTime, setEndTime] = useState(initialEnd);
   const [attendeeCount, setAttendeeCount] = useState(
-    initialValues?.attendeeCount ?? 1
+    initialValues?.attendeeCount ?? 1,
   );
   const [employeeId, setEmployeeId] = useState<number | "">(
-    initialValues?.employeeId ?? ""
+    initialValues?.employeeId ?? "",
   );
   const [roomId, setRoomId] = useState<number | "">(
-    initialValues?.roomId ?? ""
+    initialValues?.roomId ?? "",
   );
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -119,7 +124,7 @@ export function CreateReservationForm({
       nextErrors.roomId = "Room is required.";
     }
 
-    if (employeeId === "") {
+    if (isAdmin && employeeId === "") {
       nextErrors.employeeId = "Employee is required.";
     }
 
@@ -234,34 +239,34 @@ export function CreateReservationForm({
             className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
           />
           {errors.attendeeCount && (
-            <p className="mt-1 text-sm text-red-600">
-              {errors.attendeeCount}
-            </p>
+            <p className="mt-1 text-sm text-red-600">{errors.attendeeCount}</p>
           )}
         </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Employee
-          </label>
-          <select
-            value={employeeId}
-            onChange={(e) =>
-              setEmployeeId(e.target.value ? Number(e.target.value) : "")
-            }
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
-          >
-            <option value="">Select employee</option>
-            {employees.map((employee) => (
-              <option key={employee.id} value={employee.id}>
-                {employee.name} — {employee.department}
-              </option>
-            ))}
-          </select>
-          {errors.employeeId && (
-            <p className="mt-1 text-sm text-red-600">{errors.employeeId}</p>
-          )}
-        </div>
+        {isAdmin && (
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Employee
+            </label>
+            <select
+              value={employeeId}
+              onChange={(e) =>
+                setEmployeeId(e.target.value ? Number(e.target.value) : "")
+              }
+              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
+            >
+              <option value="">Select employee</option>
+              {employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.name} — {employee.department}
+                </option>
+              ))}
+            </select>
+            {errors.employeeId && (
+              <p className="mt-1 text-sm text-red-600">{errors.employeeId}</p>
+            )}
+          </div>
+        )}
 
         <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-medium text-slate-700">
