@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { href: "/rooms", label: "Rooms", roles: ["ADMIN", "EMPLOYEE"] },
   { href: "/rooms/available", label: "Find a room", roles: ["ADMIN", "EMPLOYEE"] },
   { href: "/reservations", label: "Reservations", roles: ["ADMIN", "EMPLOYEE"] },
+  { href: "/calendar", label: "Calendar", roles: ["ADMIN", "EMPLOYEE"] },
   { href: "/employees", label: "Employees", roles: ["ADMIN"] },
   { href: "/users", label: "Users", roles: ["ADMIN"] },
 ];

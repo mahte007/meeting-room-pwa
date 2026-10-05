@@ -35,3 +35,36 @@ export function withSeconds(value: string) {
 export function isValidDateTime(value: string | null | undefined) {
   return !!value && !Number.isNaN(new Date(value).getTime());
 }
+
+/** Parses "YYYY-MM-DD" as local midnight, or returns null if invalid. */
+export function parseLocalDate(value: string | null | undefined) {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) return null;
+
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function addDays(date: Date, days: number) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+/** Monday 00:00 of the week containing `date`. */
+export function startOfWeek(date: Date) {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  // getDay() is 0 for Sunday; shift so the week starts on Monday.
+  result.setDate(result.getDate() - ((result.getDay() + 6) % 7));
+  return result;
+}
+
+export function isSameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
