@@ -1,15 +1,31 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 
-export default function LoginPage() {
+/**
+ * Only allows same-origin paths like "/reservations", so a crafted link such as
+ * /login?redirect=https://evil.example can't send the user to another site.
+ */
+function getSafeRedirect(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/";
+  }
+
+  if (value.startsWith("/\\") || value.startsWith("/login")) {
+    return "/";
+  }
+
+  return value;
+}
+
+function LoginForm() {
   const searchParams = useSearchParams();
   const { login } = useAuth();
 
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -20,12 +36,10 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login({ username, password });
-
-      const redirect = searchParams.get("redirect");
-      if (redirect) {
-        window.location.href = redirect;
-      }
+      await login(
+        { username, password },
+        getSafeRedirect(searchParams.get("redirect")),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed.");
     } finally {
@@ -33,6 +47,66 @@ export default function LoginPage() {
     }
   }
 
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 rounded-2xl border bg-white p-6 shadow-sm"
+    >
+      <div>
+        <label
+          htmlFor="username"
+          className="mb-2 block text-sm font-medium text-slate-700"
+        >
+          Username
+        </label>
+        <input
+          id="username"
+          autoComplete="username"
+          required
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
+        />
+      </div>
+
+      <div>
+        <label
+          htmlFor="password"
+          className="mb-2 block text-sm font-medium text-slate-700"
+        >
+          Password
+        </label>
+        <input
+          id="password"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
+        />
+      </div>
+
+      {error && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        >
+          {error}
+        </div>
+      )}
+
+      <button
+        disabled={isSubmitting}
+        className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isSubmitting ? "Logging in..." : "Login"}
+      </button>
+    </form>
+  );
+}
+
+export default function LoginPage() {
   return (
     <section className="mx-auto max-w-md space-y-6">
       <div>
@@ -42,46 +116,10 @@ export default function LoginPage() {
         </p>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4 rounded-2xl border bg-white p-6 shadow-sm"
-      >
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Username
-          </label>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
-          />
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Password
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
-          />
-        </div>
-
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        <button
-          disabled={isSubmitting}
-          className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSubmitting ? "Logging in..." : "Login"}
-        </button>
-      </form>
+      {/* useSearchParams needs a Suspense boundary for static rendering. */}
+      <Suspense>
+        <LoginForm />
+      </Suspense>
     </section>
   );
 }

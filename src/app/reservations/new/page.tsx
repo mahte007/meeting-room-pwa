@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { CreateReservationForm } from "@/components/reservations/create-reservation-form";
 import { QueryState } from "@/components/ui/query-state";
 import {
-  ApiError,
   createReservation,
   getActiveEmployees,
   getActiveRooms,
+  getErrorDetails,
 } from "@/lib/api";
 import type { CreateReservationInput } from "@/lib/types";
 import { ProtectedRoute } from "@/components/auth/protected-route";
@@ -20,13 +20,13 @@ export default function NewReservationPage() {
   const isAdmin = user?.role === "ADMIN";
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const roomsQuery = useQuery({
     queryKey: ["rooms", "active"],
     queryFn: getActiveRooms,
   });
 
+  // /api/employees is admin-only; only admins pick whom to book for.
   const employeesQuery = useQuery({
     queryKey: ["employees", "active"],
     queryFn: getActiveEmployees,
@@ -37,21 +37,17 @@ export default function NewReservationPage() {
     mutationFn: (values: CreateReservationInput) => createReservation(values),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["reservations", "active"] }),
-        queryClient.invalidateQueries({ queryKey: ["rooms", "active"] }),
+        queryClient.invalidateQueries({ queryKey: ["reservations"] }),
+        queryClient.invalidateQueries({ queryKey: ["rooms"] }),
       ]);
 
       router.push("/reservations?success=created");
     },
-    onError: (error) => {
-      if (error instanceof ApiError) {
-        setSubmitError(error.message);
-        return;
-      }
-
-      setSubmitError("Failed to create reservation.");
-    },
   });
+
+  const submitErrorDetails = mutation.isError
+    ? getErrorDetails(mutation.error, "Failed to create reservation.")
+    : null;
 
   const isLoading =
     roomsQuery.isLoading || (isAdmin && employeesQuery.isLoading);
@@ -66,8 +62,9 @@ export default function NewReservationPage() {
   );
 
   async function handleSubmit(values: CreateReservationInput) {
-    setSubmitError(null);
-    await mutation.mutateAsync(values);
+    // mutate (not mutateAsync) so a failed request surfaces through
+    // mutation.error instead of an unhandled promise rejection.
+    mutation.mutate(values);
   }
 
   return (
@@ -95,7 +92,8 @@ export default function NewReservationPage() {
             employees={employees}
             onSubmit={handleSubmit}
             isSubmitting={mutation.isPending}
-            submitError={submitError}
+            submitError={submitErrorDetails?.message ?? null}
+            serverFieldErrors={submitErrorDetails?.fields}
           />
         )}
       </section>
