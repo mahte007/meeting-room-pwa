@@ -19,6 +19,9 @@ import {
   updateReservationMock,
   updateReservationStatusMock,
   archiveReservationMock,
+  restoreReservationMock,
+  getAllReservationsMock,
+  getReservationsByEmployeeMock,
   getReservationMock,
   getRoomMock,
   getReservationsByRoomMock,
@@ -191,5 +194,23 @@ export function changePassword(input: ChangePasswordInput) {
   return apiFetch<void>("/api/me/password", {
     method: "PUT",
     body: JSON.stringify(input),
+  });
+}
+
+// Includes archived reservations.
+export function getAllReservations() {
+  if (env.useMock) return getAllReservationsMock();
+  return apiFetch<Reservation[]>("/api/reservations");
+}
+
+export function getReservationsByEmployee(employeeId: number) {
+  if (env.useMock) return getReservationsByEmployeeMock(employeeId);
+  return apiFetch<Reservation[]>(`/api/reservations/employee/${employeeId}`);
+}
+
+export function restoreReservation(id: number) {
+  if (env.useMock) return restoreReservationMock(id);
+  return apiFetch<Reservation>(`/api/reservations/${id}/restore`, {
+    method: "PATCH",
   });
 }

@@ -173,3 +173,27 @@ export async function changePasswordMock(input: ChangePasswordInput) {
     throw new Error("Password must be at least 8 characters.");
   }
 }
+
+export async function getAllReservationsMock() {
+  await delay();
+  return reservations;
+}
+
+export async function getReservationsByEmployeeMock(employeeId: number) {
+  await delay();
+
+  return reservations.filter(
+    (reservation) =>
+      reservation.employeeId === employeeId && !reservation.archived,
+  );
+}
+
+export async function restoreReservationMock(id: number) {
+  await delay();
+
+  reservations = reservations.map((r) =>
+    r.id === id ? { ...r, archived: false } : r
+  );
+
+  return reservations.find((r) => r.id === id)!;
+}

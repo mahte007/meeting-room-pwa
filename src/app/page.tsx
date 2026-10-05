@@ -80,7 +80,7 @@ export default function HomePage() {
     {
       label: "Awaiting approval",
       value: plannedReservations.length,
-      href: "/reservations",
+      href: isAdmin ? "/reservations?view=approval" : "/reservations",
     },
   ];
 
