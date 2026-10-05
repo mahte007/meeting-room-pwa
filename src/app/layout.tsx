@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Providers } from "./providers";
-import { ServiceWorkerRegister } from "./sw-register";
+import { UpdatePrompt } from "@/components/pwa/update-prompt";
 import { OfflineBanner } from "@/components/layout/offline-banner";
 
 export const metadata: Metadata = {
@@ -19,10 +19,10 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900">
         <Providers>
-          <ServiceWorkerRegister />
           <Header />
           <OfflineBanner />
           <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+          <UpdatePrompt />
         </Providers>
       </body>
     </html>
