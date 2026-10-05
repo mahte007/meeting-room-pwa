@@ -2,6 +2,7 @@ import { env } from "./env";
 import type {
   ApiErrorPayload,
   CreateReservationInput,
+  CurrentUser,
   Employee,
   Reservation,
   ReservationStatus,
@@ -16,12 +17,14 @@ import {
   createReservationMock,
   updateReservationMock,
   updateReservationStatusMock,
-  deleteReservationMock,
+  archiveReservationMock,
   getReservationMock,
   getRoomMock,
   getReservationsByRoomMock,
+  loginMock,
+  getMeMock,
 } from "./mock-api";
-import { getStoredAuthUser } from "./auth-storage";
+import { clearStoredAuthUser, getStoredAuthUser } from "./auth-storage";
 
 export class ApiError extends Error {
   status: number;
@@ -33,6 +36,18 @@ export class ApiError extends Error {
     this.status = status;
     this.payload = payload;
   }
+}
+
+/**
+ * Turns a failed request into a message for the user plus, for validation
+ * errors, a message per form field.
+ */
+export function getErrorDetails(error: unknown, fallbackMessage: string) {
+  if (error instanceof ApiError) {
+    return { message: error.message, fields: error.payload?.fields ?? {} };
+  }
+
+  return { message: fallbackMessage, fields: {} };
 }
 
 async function parseError(response: Response): Promise<never> {
@@ -70,28 +85,40 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
+    // An expired, invalid or revoked token. Clearing the stored user signs the
+    // user out everywhere; ProtectedRoute then redirects to the login page.
+    // Login failures also return 401, but no token is sent with them.
+    if (response.status === 401 && authUser?.token) {
+      clearStoredAuthUser();
+    }
+
     await parseError(response);
   }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
+  // DELETE and password endpoints return 200 with an empty body.
+  const text = await response.text();
 
-  return response.json() as Promise<T>;
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export function login(input: LoginInput) {
-  if (env.useMock) {
-    return Promise.resolve<LoginResponse>({
-      token: "mock-jwt-token",
-      username: input.username,
-      role: input.username === "admin" ? "ADMIN" : "EMPLOYEE",
-    });
-  }
+  if (env.useMock) return loginMock(input);
 
   return apiFetch<LoginResponse>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Fetches the current user. Takes the token explicitly because right after
+ * login it has not been stored yet.
+ */
+export function getMe(token: string) {
+  if (env.useMock) return getMeMock(token);
+
+  return apiFetch<CurrentUser>("/api/me", {
+    headers: { Authorization: `Bearer ${token}` },
   });
 }
 
@@ -139,8 +166,9 @@ export function updateReservationStatus(id: number, status: ReservationStatus) {
   });
 }
 
-export function deleteReservation(id: number) {
-  if (env.useMock) return deleteReservationMock(id);
+// DELETE does not remove the reservation, it sets `archived: true`.
+export function archiveReservation(id: number) {
+  if (env.useMock) return archiveReservationMock(id);
   return apiFetch<void>(`/api/reservations/${id}`, {
     method: "DELETE",
   });

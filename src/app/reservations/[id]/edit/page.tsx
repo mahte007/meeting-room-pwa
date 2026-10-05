@@ -1,32 +1,65 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CreateReservationForm } from "@/components/reservations/create-reservation-form";
 import { QueryState } from "@/components/ui/query-state";
 import {
-  ApiError,
   getActiveEmployees,
   getActiveRooms,
+  getErrorDetails,
   getReservation,
   updateReservation,
 } from "@/lib/api";
-import type { CreateReservationInput } from "@/lib/types";
+import {
+  FINAL_STATUSES,
+  type CreateReservationInput,
+  type Reservation,
+} from "@/lib/types";
 import { ProtectedRoute } from "@/components/auth/protected-route";
+import { useAuth } from "@/contexts/auth-context";
+
+/**
+ * Returns why the reservation can't be edited, mirroring the backend rules,
+ * or null if it can be.
+ */
+function getEditBlockReason(
+  reservation: Reservation,
+  isAdmin: boolean,
+  employeeId: number | null | undefined,
+) {
+  if (!isAdmin && reservation.employeeId !== employeeId) {
+    return "You can only modify your own reservations.";
+  }
+
+  if (reservation.archived) {
+    return "Archived reservations cannot be modified.";
+  }
+
+  if (FINAL_STATUSES.includes(reservation.status)) {
+    return "Cancelled or completed reservations cannot be modified.";
+  }
+
+  return null;
+}
 
 export default function EditReservationPage() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
+  const isValidId = Number.isInteger(id) && id > 0;
+
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
 
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const reservationQuery = useQuery({
     queryKey: ["reservations", id],
     queryFn: () => getReservation(id),
-    enabled: Number.isFinite(id),
+    enabled: isValidId,
   });
 
   const roomsQuery = useQuery({
@@ -34,9 +67,11 @@ export default function EditReservationPage() {
     queryFn: getActiveRooms,
   });
 
+  // /api/employees is admin-only; only admins can reassign a reservation.
   const employeesQuery = useQuery({
     queryKey: ["employees", "active"],
     queryFn: getActiveEmployees,
+    enabled: isAdmin,
   });
 
   const mutation = useMutation({
@@ -50,23 +85,21 @@ export default function EditReservationPage() {
 
       router.push("/reservations?success=updated");
     },
-    onError: (error) => {
-      if (error instanceof ApiError) {
-        setSubmitError(error.message);
-        return;
-      }
-
-      setSubmitError("Failed to update reservation.");
-    },
   });
+
+  const submitErrorDetails = mutation.isError
+    ? getErrorDetails(mutation.error, "Failed to update reservation.")
+    : null;
 
   const isLoading =
     reservationQuery.isLoading ||
     roomsQuery.isLoading ||
-    employeesQuery.isLoading;
+    (isAdmin && employeesQuery.isLoading);
 
   const isError =
-    reservationQuery.isError || roomsQuery.isError || employeesQuery.isError;
+    reservationQuery.isError ||
+    roomsQuery.isError ||
+    (isAdmin && employeesQuery.isError);
 
   const combinedError =
     reservationQuery.error || roomsQuery.error || employeesQuery.error;
@@ -89,18 +122,14 @@ export default function EditReservationPage() {
     };
   }, [reservationQuery.data]);
 
-  async function handleSubmit(values: CreateReservationInput) {
-    setSubmitError(null);
-    await mutation.mutateAsync(values);
-  }
+  const editBlockReason = reservationQuery.data
+    ? getEditBlockReason(reservationQuery.data, isAdmin, user?.employeeId)
+    : null;
 
-  if (!Number.isFinite(id)) {
-    return (
-      <section className="space-y-4">
-        <h1 className="text-3xl font-bold">Invalid reservation</h1>
-        <p className="text-slate-700">The reservation id is invalid.</p>
-      </section>
-    );
+  async function handleSubmit(values: CreateReservationInput) {
+    // mutate (not mutateAsync) so a failed request surfaces through
+    // mutation.error instead of an unhandled promise rejection.
+    mutation.mutate(values);
   }
 
   return (
@@ -113,24 +142,43 @@ export default function EditReservationPage() {
           </p>
         </div>
 
-        <QueryState
-          isLoading={isLoading}
-          isError={isError}
-          error={combinedError}
-          loadingText="Loading reservation..."
-          errorTitle="Failed to load reservation."
-        />
+        {!isValidId ? (
+          <p className="text-slate-700">The reservation id is invalid.</p>
+        ) : (
+          <>
+            <QueryState
+              isLoading={isLoading}
+              isError={isError}
+              error={combinedError}
+              loadingText="Loading reservation..."
+              errorTitle="Failed to load reservation."
+            />
 
-        {!isLoading && !isError && initialValues && (
-          <CreateReservationForm
-            rooms={roomsQuery.data ?? []}
-            employees={employeesQuery.data ?? []}
-            initialValues={initialValues}
-            submitLabel="Save changes"
-            onSubmit={handleSubmit}
-            isSubmitting={mutation.isPending}
-            submitError={submitError}
-          />
+            {!isLoading && !isError && editBlockReason && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+                <p className="text-sm text-amber-800">{editBlockReason}</p>
+                <Link
+                  href="/reservations"
+                  className="mt-3 inline-block text-sm font-medium underline"
+                >
+                  Back to reservations
+                </Link>
+              </div>
+            )}
+
+            {!isLoading && !isError && !editBlockReason && initialValues && (
+              <CreateReservationForm
+                rooms={roomsQuery.data ?? []}
+                employees={employeesQuery.data ?? []}
+                initialValues={initialValues}
+                submitLabel="Save changes"
+                onSubmit={handleSubmit}
+                isSubmitting={mutation.isPending}
+                submitError={submitErrorDetails?.message ?? null}
+                serverFieldErrors={submitErrorDetails?.fields}
+              />
+            )}
+          </>
         )}
       </section>
     </ProtectedRoute>

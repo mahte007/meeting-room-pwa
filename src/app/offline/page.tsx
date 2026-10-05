@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function OfflinePage() {
   return (
     <section className="space-y-4">
@@ -8,12 +10,12 @@ export default function OfflinePage() {
         make it available offline.
       </p>
 
-      <a
+      <Link
         href="/"
         className="inline-flex rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
       >
         Go to dashboard
-      </a>
+      </Link>
     </section>
   );
 }
