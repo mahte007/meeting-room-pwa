@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import { ReservationsList } from "@/components/reservations/reservations-list";
 import { getReservationsByRoom, getRoom } from "@/lib/api";
 import { ProtectedRoute } from "@/components/auth/protected-route";
@@ -39,9 +39,7 @@ export default function RoomDetailPage() {
     );
   }
 
-  const isLoading = roomQuery.isLoading || reservationsQuery.isLoading;
-  const isError = roomQuery.isError || reservationsQuery.isError;
-  const error = roomQuery.error || reservationsQuery.error;
+  const queryState = combineQueries(roomQuery, reservationsQuery);
 
   return (
     <ProtectedRoute allowedRoles={["ADMIN", "EMPLOYEE"]}>
@@ -73,14 +71,12 @@ export default function RoomDetailPage() {
         </div>
 
         <QueryState
-          isLoading={isLoading}
-          isError={isError}
-          error={error}
+          state={queryState}
           loadingText="Loading room details..."
           errorTitle="Failed to load room details."
         />
 
-        {!isLoading && !isError && roomQuery.data && (
+        {queryState.status === "ready" && roomQuery.data && (
           <>
             <article className="rounded-2xl border bg-white p-6 shadow-sm">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">

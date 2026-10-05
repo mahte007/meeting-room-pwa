@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { EmployeeForm } from "@/components/employees/employee-form";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import { getEmployee, getErrorDetails, updateEmployee } from "@/lib/api";
 import type { SaveEmployeeInput } from "@/lib/types";
 
@@ -59,9 +59,7 @@ export default function EditEmployeePage() {
         ) : (
           <>
             <QueryState
-              isLoading={employeeQuery.isLoading}
-              isError={employeeQuery.isError}
-              error={employeeQuery.error}
+              state={combineQueries(employeeQuery)}
               loadingText="Loading employee..."
               errorTitle="Failed to load employee."
             />

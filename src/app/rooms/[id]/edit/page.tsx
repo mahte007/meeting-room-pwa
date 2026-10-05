@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { RoomForm } from "@/components/rooms/room-form";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import { getErrorDetails, getRoom, updateRoom } from "@/lib/api";
 import type { SaveRoomInput } from "@/lib/types";
 
@@ -55,9 +55,7 @@ export default function EditRoomPage() {
         ) : (
           <>
             <QueryState
-              isLoading={roomQuery.isLoading}
-              isError={roomQuery.isError}
-              error={roomQuery.error}
+              state={combineQueries(roomQuery)}
               loadingText="Loading room..."
               errorTitle="Failed to load room."
             />

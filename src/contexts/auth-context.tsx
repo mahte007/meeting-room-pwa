@@ -21,6 +21,7 @@ import {
   subscribeToAuthUser,
 } from "@/lib/auth-storage";
 import { ApiError, getMe, login as loginRequest } from "@/lib/api";
+import { queryPersister } from "@/lib/query-persister";
 import type { AuthUser, LoginInput } from "@/lib/types";
 
 type AuthContextValue = {
@@ -125,12 +126,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     validatedToken.current = null;
     queryClient.clear();
 
-    if ("caches" in window) {
-      caches
-        .keys()
-        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
-        .catch(() => {});
-    }
+    // The service worker only caches the app shell, which holds no user
+    // data, so its caches are kept and the app still opens offline.
+    queryPersister.removeClient().catch(() => {});
   }, [token, queryClient]);
 
   const login = useCallback(

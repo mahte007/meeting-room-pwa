@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ReservationsList } from "@/components/reservations/reservations-list";
 import { Alert } from "@/components/ui/alert";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -116,15 +116,13 @@ function ReservationsView({
   const successMessage =
     actionMessage === undefined ? initialMessage : actionMessage;
 
-  const {
-    data: reservations = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
+  const reservationsQuery = useQuery({
     queryKey: ["reservations", "view", view.id, employeeId],
     queryFn: () => fetchView(view.id, employeeId),
   });
+
+  const reservations = reservationsQuery.data ?? [];
+  const queryState = combineQueries(reservationsQuery);
 
   async function onMutationSuccess(message: string) {
     await queryClient.invalidateQueries({ queryKey: ["reservations"] });
@@ -193,14 +191,12 @@ function ReservationsView({
       )}
 
       <QueryState
-        isLoading={isLoading}
-        isError={isError}
-        error={error}
+        state={queryState}
         loadingText="Loading reservations..."
         errorTitle="Failed to load reservations."
       />
 
-      {!isLoading && !isError && (
+      {queryState.status === "ready" && (
         <ReservationsList
           reservations={reservations}
           onArchive={handleArchive}

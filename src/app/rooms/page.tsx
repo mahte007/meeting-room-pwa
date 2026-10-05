@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RoomsList } from "@/components/rooms/rooms-list";
 import { Alert } from "@/components/ui/alert";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import { useAuth } from "@/contexts/auth-context";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import {
@@ -28,15 +28,13 @@ export default function RoomsPage() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   // Admins load every room so they can reactivate inactive ones.
-  const {
-    data: rooms = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
+  const roomsQuery = useQuery({
     queryKey: isAdmin ? ["rooms", "all"] : ["rooms", "active"],
     queryFn: isAdmin ? getRooms : getActiveRooms,
   });
+
+  const rooms = roomsQuery.data ?? [];
+  const queryState = combineQueries(roomsQuery);
 
   const visibleRooms = showInactive
     ? rooms
@@ -138,14 +136,12 @@ export default function RoomsPage() {
         )}
 
         <QueryState
-          isLoading={isLoading}
-          isError={isError}
-          error={error}
+          state={queryState}
           loadingText="Loading rooms..."
           errorTitle="Failed to load rooms."
         />
 
-        {!isLoading && !isError && (
+        {queryState.status === "ready" && (
           <RoomsList
             rooms={visibleRooms}
             onDeactivate={isAdmin ? handleDeactivate : undefined}

@@ -4,10 +4,13 @@
 // the version, so each build also starts with clean caches.
 const VERSION = "__BUILD_ID__";
 
+// This worker only caches the app shell (pages and static assets). API data
+// is cached by the app itself in IndexedDB (see src/lib/query-persister.ts),
+// where it is tied to the signed-in user and cleared on logout. A response
+// cache here can't do that: its keys ignore the Authorization header.
 const STATIC_CACHE = `static-${VERSION}`;
 const PAGES_CACHE = `pages-${VERSION}`;
-const API_CACHE = `api-${VERSION}`;
-const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE, API_CACHE];
+const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
 
 const OFFLINE_PAGE = "/offline";
 
@@ -82,18 +85,6 @@ function handleNavigation(event, url) {
   );
 }
 
-// Network first for API reads, falling back to the last successful response.
-function handleApiRead(event) {
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        putInCache(event, API_CACHE, event.request, response);
-        return response;
-      })
-      .catch(() => caches.match(event.request)),
-  );
-}
-
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
@@ -109,15 +100,5 @@ self.addEventListener("fetch", (event) => {
 
   if (isSameOrigin && request.mode === "navigate") {
     handleNavigation(event, url);
-    return;
-  }
-
-  const isApiRead =
-    url.pathname.startsWith("/api/rooms") ||
-    url.pathname.startsWith("/api/reservations") ||
-    url.pathname.startsWith("/api/employees");
-
-  if (isApiRead) {
-    handleApiRead(event);
   }
 });
