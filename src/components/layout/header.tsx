@@ -13,8 +13,11 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", roles: ["ADMIN", "EMPLOYEE"] },
   { href: "/rooms", label: "Rooms", roles: ["ADMIN", "EMPLOYEE"] },
+  { href: "/rooms/available", label: "Find a room", roles: ["ADMIN", "EMPLOYEE"] },
   { href: "/reservations", label: "Reservations", roles: ["ADMIN", "EMPLOYEE"] },
+  { href: "/calendar", label: "Calendar", roles: ["ADMIN", "EMPLOYEE"] },
   { href: "/employees", label: "Employees", roles: ["ADMIN"] },
+  { href: "/users", label: "Users", roles: ["ADMIN"] },
 ];
 
 export function Header() {
@@ -47,9 +50,12 @@ export function Header() {
             </nav>
 
             <div className="flex items-center gap-2 text-sm text-slate-600">
-              <span>
+              <Link
+                href="/profile"
+                className="hover:text-slate-950 hover:underline"
+              >
                 {user?.username} ({user?.role})
-              </span>
+              </Link>
 
               <button
                 onClick={logout}

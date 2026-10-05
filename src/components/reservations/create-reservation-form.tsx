@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import type { CreateReservationInput, Employee, Room } from "@/lib/types";
 import { useAuth } from "@/contexts/auth-context";
+import { roundedHoursFromNow, withSeconds } from "@/lib/date-utils";
 
 type CreateReservationFormProps = {
   rooms: Room[];
@@ -26,26 +27,6 @@ const DESCRIPTION_MAX_LENGTH = 1000;
 
 const inputClassName =
   "w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500";
-
-function toLocalDateTimeInputValue(date: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate(),
-  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-// Start of the hour `hoursFromNow` hours from now, as a datetime-local value.
-function roundedHoursFromNow(hoursFromNow: number) {
-  const date = new Date();
-  date.setMinutes(0, 0, 0);
-  date.setHours(date.getHours() + hoursFromNow);
-  return toLocalDateTimeInputValue(date);
-}
-
-function withSeconds(value: string) {
-  return value.length === 16 ? `${value}:00` : value;
-}
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;

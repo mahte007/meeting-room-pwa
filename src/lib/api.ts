@@ -1,42 +1,60 @@
 import { env } from "./env";
 import type {
   ApiErrorPayload,
+  ChangePasswordInput,
   CreateReservationInput,
   CurrentUser,
   Employee,
   Reservation,
   ReservationStatus,
   Room,
+  SaveRoomInput,
+  SaveEmployeeInput,
+  User,
+  CreateUserInput,
+  UpdateUserInput,
   LoginInput,
   LoginResponse,
 } from "./types";
 import {
   getActiveRoomsMock,
   getActiveEmployeesMock,
+  getEmployeesMock,
+  getEmployeeMock,
+  createEmployeeMock,
+  updateEmployeeMock,
+  deactivateEmployeeMock,
+  activateEmployeeMock,
   getActiveReservationsMock,
   createReservationMock,
   updateReservationMock,
   updateReservationStatusMock,
   archiveReservationMock,
+  restoreReservationMock,
+  getAllReservationsMock,
+  getReservationsByEmployeeMock,
   getReservationMock,
   getRoomMock,
+  getRoomsMock,
+  getAvailableRoomsMock,
+  createRoomMock,
+  updateRoomMock,
+  deactivateRoomMock,
+  activateRoomMock,
   getReservationsByRoomMock,
   loginMock,
+  changePasswordMock,
   getMeMock,
+  getUsersMock,
+  createUserMock,
+  updateUserMock,
+  resetUserPasswordMock,
+  deleteUserMock,
 } from "./mock-api";
 import { clearStoredAuthUser, getStoredAuthUser } from "./auth-storage";
+import { ApiError } from "./api-error";
 
-export class ApiError extends Error {
-  status: number;
-  payload?: ApiErrorPayload;
-
-  constructor(message: string, status: number, payload?: ApiErrorPayload) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.payload = payload;
-  }
-}
+export { ApiError };
 
 /**
  * Turns a failed request into a message for the user plus, for validation
@@ -182,4 +200,152 @@ export function getRoom(id: number) {
 export function getReservationsByRoom(roomId: number) {
   if (env.useMock) return getReservationsByRoomMock(roomId);
   return apiFetch<Reservation[]>(`/api/reservations/room/${roomId}`);
+}
+
+export function changePassword(input: ChangePasswordInput) {
+  if (env.useMock) return changePasswordMock(input);
+  return apiFetch<void>("/api/me/password", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+// Includes archived reservations.
+export function getAllReservations() {
+  if (env.useMock) return getAllReservationsMock();
+  return apiFetch<Reservation[]>("/api/reservations");
+}
+
+export function getReservationsByEmployee(employeeId: number) {
+  if (env.useMock) return getReservationsByEmployeeMock(employeeId);
+  return apiFetch<Reservation[]>(`/api/reservations/employee/${employeeId}`);
+}
+
+export function restoreReservation(id: number) {
+  if (env.useMock) return restoreReservationMock(id);
+  return apiFetch<Reservation>(`/api/reservations/${id}/restore`, {
+    method: "PATCH",
+  });
+}
+
+// Includes inactive rooms.
+export function getRooms() {
+  if (env.useMock) return getRoomsMock();
+  return apiFetch<Room[]>("/api/rooms");
+}
+
+export function createRoom(input: SaveRoomInput) {
+  if (env.useMock) return createRoomMock(input);
+  return apiFetch<Room>("/api/rooms", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateRoom(id: number, input: SaveRoomInput) {
+  if (env.useMock) return updateRoomMock(id, input);
+  return apiFetch<Room>(`/api/rooms/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+// DELETE does not remove the room, it sets `active: false`.
+export function deactivateRoom(id: number) {
+  if (env.useMock) return deactivateRoomMock(id);
+  return apiFetch<void>(`/api/rooms/${id}`, { method: "DELETE" });
+}
+
+export function activateRoom(id: number) {
+  if (env.useMock) return activateRoomMock(id);
+  return apiFetch<Room>(`/api/rooms/${id}/activate`, { method: "PATCH" });
+}
+
+// Includes inactive employees. Admin only.
+export function getEmployees() {
+  if (env.useMock) return getEmployeesMock();
+  return apiFetch<Employee[]>("/api/employees");
+}
+
+export function getEmployee(id: number) {
+  if (env.useMock) return getEmployeeMock(id);
+  return apiFetch<Employee>(`/api/employees/${id}`);
+}
+
+export function createEmployee(input: SaveEmployeeInput) {
+  if (env.useMock) return createEmployeeMock(input);
+  return apiFetch<Employee>("/api/employees", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateEmployee(id: number, input: SaveEmployeeInput) {
+  if (env.useMock) return updateEmployeeMock(id, input);
+  return apiFetch<Employee>(`/api/employees/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+// DELETE does not remove the employee, it sets `active: false`. This also
+// locks the employee's login account until they are activated again.
+export function deactivateEmployee(id: number) {
+  if (env.useMock) return deactivateEmployeeMock(id);
+  return apiFetch<void>(`/api/employees/${id}`, { method: "DELETE" });
+}
+
+export function activateEmployee(id: number) {
+  if (env.useMock) return activateEmployeeMock(id);
+  return apiFetch<Employee>(`/api/employees/${id}/activate`, {
+    method: "PATCH",
+  });
+}
+
+// Login accounts. Admin only.
+export function getUsers() {
+  if (env.useMock) return getUsersMock();
+  return apiFetch<User[]>("/api/users");
+}
+
+export function createUser(input: CreateUserInput) {
+  if (env.useMock) return createUserMock(input);
+  return apiFetch<User>("/api/users", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateUser(id: number, input: UpdateUserInput) {
+  if (env.useMock) return updateUserMock(id, input);
+  return apiFetch<User>(`/api/users/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+// Sets a new password without needing the old one.
+export function resetUserPassword(id: number, password: string) {
+  if (env.useMock) return resetUserPasswordMock(id, password);
+  return apiFetch<void>(`/api/users/${id}/password`, {
+    method: "PATCH",
+    body: JSON.stringify({ password }),
+  });
+}
+
+// Unlike rooms and employees, users are permanently deleted.
+export function deleteUser(id: number) {
+  if (env.useMock) return deleteUserMock(id);
+  return apiFetch<void>(`/api/users/${id}`, { method: "DELETE" });
+}
+
+/**
+ * Active rooms with no overlapping reservation between `start` and `end`
+ * (backend format, "YYYY-MM-DDTHH:mm:ss"). Does not filter by capacity.
+ */
+export function getAvailableRooms(start: string, end: string) {
+  if (env.useMock) return getAvailableRoomsMock(start, end);
+
+  const params = new URLSearchParams({ start, end });
+  return apiFetch<Room[]>(`/api/rooms/available?${params}`);
 }

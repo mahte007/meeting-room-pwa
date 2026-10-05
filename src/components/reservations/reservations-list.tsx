@@ -14,7 +14,9 @@ type ReservationsListProps = {
   reservations: Reservation[];
   onArchive?: (id: number) => void;
   onStatusChange?: (id: number, status: ReservationStatus) => void;
+  onRestore?: (id: number) => void;
   isMutating?: boolean;
+  emptyText?: string;
 };
 
 function formatDateTime(value: string) {
@@ -54,7 +56,9 @@ export function ReservationsList({
   reservations,
   onArchive,
   onStatusChange,
+  onRestore,
   isMutating = false,
+  emptyText = "No reservations found.",
 }: ReservationsListProps) {
   const isOnline = useOnlineStatus();
   const actionsDisabled = isMutating || !isOnline;
@@ -65,7 +69,7 @@ export function ReservationsList({
   if (!reservations.length) {
     return (
       <div className="rounded-2xl border bg-white p-6">
-        <p className="text-slate-600">No reservations found.</p>
+        <p className="text-slate-600">{emptyText}</p>
       </div>
     );
   }
@@ -79,17 +83,25 @@ export function ReservationsList({
           (user?.employeeId != null &&
             reservation.employeeId === user.employeeId);
 
-        const canEdit =
-          canManage && !FINAL_STATUSES.includes(reservation.status);
+        // Archived reservations can only be restored, and only by admins.
+        const isArchived = reservation.archived;
 
-        const canArchive = canManage && !!onArchive;
+        const canEdit =
+          canManage &&
+          !isArchived &&
+          !FINAL_STATUSES.includes(reservation.status);
+
+        const canArchive = canManage && !isArchived && !!onArchive;
+
+        const canRestore = isAdmin && isArchived && !!onRestore;
 
         const transitions =
-          isAdmin && onStatusChange
+          isAdmin && !isArchived && onStatusChange
             ? ALLOWED_TRANSITIONS[reservation.status]
             : [];
 
-        const hasActions = canEdit || canArchive || transitions.length > 0;
+        const hasActions =
+          canEdit || canArchive || canRestore || transitions.length > 0;
 
         return (
           <article
@@ -104,13 +116,20 @@ export function ReservationsList({
                 </p>
               </div>
 
-              <span
-                className={`rounded-full px-2 py-1 text-xs font-medium ${getStatusClasses(
-                  reservation.status,
-                )}`}
-              >
-                {reservation.status}
-              </span>
+              <div className="flex gap-2">
+                {isArchived && (
+                  <span className="rounded-full bg-slate-800 px-2 py-1 text-xs font-medium text-white">
+                    ARCHIVED
+                  </span>
+                )}
+                <span
+                  className={`rounded-full px-2 py-1 text-xs font-medium ${getStatusClasses(
+                    reservation.status,
+                  )}`}
+                >
+                  {reservation.status}
+                </span>
+              </div>
             </div>
 
             <dl className="grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
@@ -171,6 +190,16 @@ export function ReservationsList({
                     {getTransitionLabel(reservation.status, nextStatus)}
                   </button>
                 ))}
+
+                {canRestore && (
+                  <button
+                    disabled={actionsDisabled}
+                    onClick={() => onRestore?.(reservation.id)}
+                    className="cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:cursor-default disabled:opacity-60"
+                  >
+                    Restore
+                  </button>
+                )}
 
                 {canArchive && (
                   <button

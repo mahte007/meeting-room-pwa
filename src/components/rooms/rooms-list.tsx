@@ -1,13 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import {
+  dangerButtonClassName,
+  secondaryButtonClassName,
+} from "@/components/ui/form-field";
 import type { Room } from "@/lib/types";
 
 type RoomsListProps = {
   rooms: Room[];
+  // Admin actions; the buttons are only shown when these are passed.
+  onDeactivate?: (room: Room) => void;
+  onActivate?: (room: Room) => void;
+  actionsDisabled?: boolean;
 };
 
-export function RoomsList({ rooms }: RoomsListProps) {
+export function RoomsList({
+  rooms,
+  onDeactivate,
+  onActivate,
+  actionsDisabled = false,
+}: RoomsListProps) {
   if (!rooms.length) {
     return (
       <div className="rounded-2xl border bg-white p-6">
@@ -21,7 +34,9 @@ export function RoomsList({ rooms }: RoomsListProps) {
       {rooms.map((room) => (
         <article
           key={room.id}
-          className="rounded-2xl border bg-white p-5 shadow-sm"
+          className={`rounded-2xl border bg-white p-5 shadow-sm ${
+            room.active ? "" : "opacity-75"
+          }`}
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <h2 className="text-lg font-semibold">{room.name}</h2>
@@ -51,13 +66,42 @@ export function RoomsList({ rooms }: RoomsListProps) {
             </div>
           </dl>
 
-          <div className="mt-5">
+          <div className="mt-5 flex flex-wrap gap-2">
             <Link
               href={`/rooms/${room.id}`}
               className="inline-flex rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50"
             >
               View details
             </Link>
+
+            {onDeactivate && onActivate && (
+              <>
+                <Link
+                  href={`/rooms/${room.id}/edit`}
+                  className="inline-flex rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50"
+                >
+                  Edit
+                </Link>
+
+                {room.active ? (
+                  <button
+                    disabled={actionsDisabled}
+                    onClick={() => onDeactivate(room)}
+                    className={dangerButtonClassName}
+                  >
+                    Deactivate
+                  </button>
+                ) : (
+                  <button
+                    disabled={actionsDisabled}
+                    onClick={() => onActivate(room)}
+                    className={secondaryButtonClassName}
+                  >
+                    Activate
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </article>
       ))}
