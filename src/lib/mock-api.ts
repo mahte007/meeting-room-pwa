@@ -18,6 +18,9 @@ import type {
   SaveRoomInput,
   Employee,
   SaveEmployeeInput,
+  User,
+  CreateUserInput,
+  UpdateUserInput,
 } from "./types";
 
 function delay(ms = 400) {
@@ -30,19 +33,31 @@ let employees = [...mockEmployees];
 
 const MOCK_TOKEN_PREFIX = "mock-jwt-token:";
 
-// Mirrors the seeded backend accounts: "admin" has no linked employee, every
-// other username is linked to the first mock employee.
-function mockUserFor(username: string): CurrentUser {
-  const isAdmin = username === "admin";
-  const employee = isAdmin ? null : employees[0];
+// Mirrors the seeded backend accounts: "admin" has no linked employee and
+// "mate" is linked to the first mock employee.
+let users: User[] = [
+  {
+    id: 1,
+    username: "admin",
+    role: "ADMIN",
+    employeeId: null,
+    employeeName: null,
+  },
+  {
+    id: 2,
+    username: "mate",
+    role: "EMPLOYEE",
+    employeeId: mockEmployees[0].id,
+    employeeName: mockEmployees[0].name,
+  },
+];
 
-  return {
-    id: isAdmin ? 1 : 2,
-    username,
-    role: isAdmin ? "ADMIN" : "EMPLOYEE",
-    employeeId: employee?.id ?? null,
-    employeeName: employee?.name ?? null,
-  };
+// The mock accepts any password, and unknown usernames log in as "mate".
+function mockUserFor(username: string): CurrentUser {
+  return (
+    users.find((user) => user.username === username) ??
+    users.find((user) => user.username === "mate")!
+  );
 }
 
 export async function loginMock(input: LoginInput): Promise<LoginResponse> {
@@ -354,4 +369,136 @@ export async function activateEmployeeMock(id: number) {
   employees = employees.map((e) => (e.id === id ? { ...e, active: true } : e));
 
   return employees.find((e) => e.id === id)!;
+}
+
+export async function getUsersMock() {
+  await delay();
+  return [...users].sort((a, b) => a.username.localeCompare(b.username));
+}
+
+// Applies the backend's account rules for linking an employee.
+function resolveLinkedEmployee(
+  role: User["role"],
+  employeeId: number | null | undefined,
+  exceptUserId?: number,
+) {
+  if (employeeId == null) {
+    if (role === "EMPLOYEE") {
+      throw createApiError(
+        400,
+        "BAD_REQUEST",
+        "Employee accounts must be linked to an employee.",
+      );
+    }
+
+    return null;
+  }
+
+  const employee = employees.find((e) => e.id === employeeId);
+
+  if (!employee) {
+    throw createApiError(404, "NOT_FOUND", "Employee not found.");
+  }
+
+  if (!employee.active) {
+    throw createApiError(400, "BAD_REQUEST", "Employee is not active.");
+  }
+
+  if (users.some((u) => u.id !== exceptUserId && u.employeeId === employeeId)) {
+    throw createApiError(
+      400,
+      "BAD_REQUEST",
+      "Employee already has a user account.",
+    );
+  }
+
+  return employee;
+}
+
+export async function createUserMock(input: CreateUserInput): Promise<User> {
+  await delay();
+
+  if (users.some((u) => u.username === input.username)) {
+    throw createApiError(400, "BAD_REQUEST", "Username already exists.");
+  }
+
+  const employee = resolveLinkedEmployee(input.role, input.employeeId);
+
+  const user: User = {
+    id: Date.now(),
+    username: input.username,
+    role: input.role,
+    employeeId: employee?.id ?? null,
+    employeeName: employee?.name ?? null,
+  };
+
+  users = [...users, user];
+
+  return user;
+}
+
+export async function updateUserMock(id: number, input: UpdateUserInput) {
+  await delay();
+
+  const user = users.find((u) => u.id === id);
+
+  if (!user) throw createApiError(404, "NOT_FOUND", "User not found.");
+
+  if (
+    user.username === getStoredAuthUser()?.username &&
+    user.role !== input.role
+  ) {
+    throw createApiError(
+      400,
+      "BAD_REQUEST",
+      "You cannot change your own role.",
+    );
+  }
+
+  const employee = resolveLinkedEmployee(input.role, input.employeeId, id);
+
+  const updated: User = {
+    ...user,
+    role: input.role,
+    employeeId: employee?.id ?? null,
+    employeeName: employee?.name ?? null,
+  };
+
+  users = users.map((u) => (u.id === id ? updated : u));
+
+  return updated;
+}
+
+export async function resetUserPasswordMock(id: number, password: string) {
+  await delay();
+
+  if (!users.some((u) => u.id === id)) {
+    throw createApiError(404, "NOT_FOUND", "User not found.");
+  }
+
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    throw createApiError(
+      400,
+      "BAD_REQUEST",
+      "Password must be at least 8 characters.",
+    );
+  }
+}
+
+export async function deleteUserMock(id: number) {
+  await delay();
+
+  const user = users.find((u) => u.id === id);
+
+  if (!user) throw createApiError(404, "NOT_FOUND", "User not found.");
+
+  if (user.username === getStoredAuthUser()?.username) {
+    throw createApiError(
+      400,
+      "BAD_REQUEST",
+      "You cannot delete your own account.",
+    );
+  }
+
+  users = users.filter((u) => u.id !== id);
 }

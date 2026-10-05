@@ -10,6 +10,9 @@ import type {
   Room,
   SaveRoomInput,
   SaveEmployeeInput,
+  User,
+  CreateUserInput,
+  UpdateUserInput,
   LoginInput,
   LoginResponse,
 } from "./types";
@@ -41,6 +44,11 @@ import {
   loginMock,
   changePasswordMock,
   getMeMock,
+  getUsersMock,
+  createUserMock,
+  updateUserMock,
+  resetUserPasswordMock,
+  deleteUserMock,
 } from "./mock-api";
 import { clearStoredAuthUser, getStoredAuthUser } from "./auth-storage";
 import { ApiError } from "./api-error";
@@ -291,4 +299,41 @@ export function activateEmployee(id: number) {
   return apiFetch<Employee>(`/api/employees/${id}/activate`, {
     method: "PATCH",
   });
+}
+
+// Login accounts. Admin only.
+export function getUsers() {
+  if (env.useMock) return getUsersMock();
+  return apiFetch<User[]>("/api/users");
+}
+
+export function createUser(input: CreateUserInput) {
+  if (env.useMock) return createUserMock(input);
+  return apiFetch<User>("/api/users", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateUser(id: number, input: UpdateUserInput) {
+  if (env.useMock) return updateUserMock(id, input);
+  return apiFetch<User>(`/api/users/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+// Sets a new password without needing the old one.
+export function resetUserPassword(id: number, password: string) {
+  if (env.useMock) return resetUserPasswordMock(id, password);
+  return apiFetch<void>(`/api/users/${id}/password`, {
+    method: "PATCH",
+    body: JSON.stringify({ password }),
+  });
+}
+
+// Unlike rooms and employees, users are permanently deleted.
+export function deleteUser(id: number) {
+  if (env.useMock) return deleteUserMock(id);
+  return apiFetch<void>(`/api/users/${id}`, { method: "DELETE" });
 }

@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { href: "/rooms", label: "Rooms", roles: ["ADMIN", "EMPLOYEE"] },
   { href: "/reservations", label: "Reservations", roles: ["ADMIN", "EMPLOYEE"] },
   { href: "/employees", label: "Employees", roles: ["ADMIN"] },
+  { href: "/users", label: "Users", roles: ["ADMIN"] },
 ];
 
 export function Header() {

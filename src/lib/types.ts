@@ -78,14 +78,33 @@ export type LoginResponse = {
   role: UserRole;
 };
 
-// Returned by GET /api/me.
-export type CurrentUser = {
+// A login account. Also returned by GET /api/me for the current user.
+export type User = {
   id: number;
   username: string;
   role: UserRole;
   employeeId: number | null;
   employeeName: string | null;
 };
+
+export type CurrentUser = User;
+
+export type CreateUserInput = {
+  username: string;
+  password: string;
+  role: UserRole;
+  // Required for EMPLOYEE accounts, optional for ADMIN.
+  employeeId?: number | null;
+};
+
+export type UpdateUserInput = {
+  role: UserRole;
+  // Omitting it unlinks the employee, which only ADMIN accounts allow.
+  employeeId?: number | null;
+};
+
+export const USERNAME_MIN_LENGTH = 3;
+export const USERNAME_MAX_LENGTH = 50;
 
 export type AuthUser = {
   username: string;
