@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import type { AuthUser, Reservation, ReservationStatus } from "@/lib/types";
 import { ProtectedRoute } from "@/components/auth/protected-route";
+import { downloadIcs, toIcsFileName } from "@/lib/ics";
 
 type ReservationView = "all" | "mine" | "approval" | "archived";
 
@@ -124,6 +125,19 @@ function ReservationsView({
   const reservations = reservationsQuery.data ?? [];
   const queryState = combineQueries(reservationsQuery);
 
+  // Cancelled reservations no longer take place, so they aren't exported.
+  const exportable = reservations.filter(
+    (reservation) => !reservation.archived && reservation.status !== "CANCELLED",
+  );
+
+  function handleExport() {
+    downloadIcs(
+      exportable,
+      toIcsFileName(`reservations ${view.label}`),
+      `Meeting rooms: ${view.label}`,
+    );
+  }
+
   async function onMutationSuccess(message: string) {
     await queryClient.invalidateQueries({ queryKey: ["reservations"] });
     setActionMessage(message);
@@ -178,7 +192,20 @@ function ReservationsView({
 
   return (
     <>
-      <p className="text-sm text-slate-600">{view.description}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-600">{view.description}</p>
+
+        {view.id !== "archived" && (
+          <button
+            onClick={handleExport}
+            disabled={exportable.length === 0}
+            title="Download these reservations as an .ics file for Google Calendar, Outlook or Apple Calendar"
+            className="cursor-pointer rounded-xl border bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:cursor-default disabled:opacity-60"
+          >
+            Export to calendar
+          </button>
+        )}
+      </div>
 
       {successMessage && <Alert variant="success">{successMessage}</Alert>}
 
