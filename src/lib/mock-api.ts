@@ -502,3 +502,29 @@ export async function deleteUserMock(id: number) {
 
   users = users.filter((u) => u.id !== id);
 }
+
+export async function getAvailableRoomsMock(start: string, end: string) {
+  await delay();
+
+  if (new Date(start) >= new Date(end)) {
+    throw createApiError(
+      400,
+      "BAD_REQUEST",
+      "Start time must be before end time.",
+    );
+  }
+
+  // Same overlap rule as the backend; back-to-back bookings don't clash.
+  return rooms.filter(
+    (room) =>
+      room.active &&
+      !reservations.some(
+        (r) =>
+          r.roomId === room.id &&
+          !r.archived &&
+          r.status !== "CANCELLED" &&
+          new Date(r.startTime) < new Date(end) &&
+          new Date(r.endTime) > new Date(start),
+      ),
+  );
+}

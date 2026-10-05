@@ -36,6 +36,7 @@ import {
   getReservationMock,
   getRoomMock,
   getRoomsMock,
+  getAvailableRoomsMock,
   createRoomMock,
   updateRoomMock,
   deactivateRoomMock,
@@ -336,4 +337,15 @@ export function resetUserPassword(id: number, password: string) {
 export function deleteUser(id: number) {
   if (env.useMock) return deleteUserMock(id);
   return apiFetch<void>(`/api/users/${id}`, { method: "DELETE" });
+}
+
+/**
+ * Active rooms with no overlapping reservation between `start` and `end`
+ * (backend format, "YYYY-MM-DDTHH:mm:ss"). Does not filter by capacity.
+ */
+export function getAvailableRooms(start: string, end: string) {
+  if (env.useMock) return getAvailableRoomsMock(start, end);
+
+  const params = new URLSearchParams({ start, end });
+  return apiFetch<Room[]>(`/api/rooms/available?${params}`);
 }

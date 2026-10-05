@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CreateReservationForm } from "@/components/reservations/create-reservation-form";
 import { QueryState } from "@/components/ui/query-state";
 import {
@@ -14,8 +14,36 @@ import {
 import type { CreateReservationInput } from "@/lib/types";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useAuth } from "@/contexts/auth-context";
+import { isValidDateTime } from "@/lib/date-utils";
 
-export default function NewReservationPage() {
+/**
+ * Prefills the form from the URL, e.g. when booking a room found with the
+ * availability search: ?roomId=2&start=...&end=...&attendees=4
+ */
+function readInitialValues(
+  searchParams: URLSearchParams,
+): Partial<CreateReservationInput> {
+  const roomId = Number(searchParams.get("roomId"));
+  const attendees = Number(searchParams.get("attendees"));
+  const start = searchParams.get("start");
+  const end = searchParams.get("end");
+
+  return {
+    roomId: Number.isInteger(roomId) && roomId > 0 ? roomId : undefined,
+    attendeeCount:
+      Number.isInteger(attendees) && attendees > 0 ? attendees : undefined,
+    startTime: isValidDateTime(start) ? start! : undefined,
+    endTime: isValidDateTime(end) ? end! : undefined,
+  };
+}
+
+function NewReservationContent() {
+  const searchParams = useSearchParams();
+  const initialValues = useMemo(
+    () => readInitialValues(searchParams),
+    [searchParams],
+  );
+
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
   const router = useRouter();
@@ -68,6 +96,32 @@ export default function NewReservationPage() {
   }
 
   return (
+    <>
+      <QueryState
+        isLoading={isLoading}
+        isError={isError}
+        error={combinedError}
+        loadingText="Loading reservation form data..."
+        errorTitle="Failed to load form data."
+      />
+
+      {!isLoading && !isError && (
+        <CreateReservationForm
+          rooms={rooms}
+          employees={employees}
+          initialValues={initialValues}
+          onSubmit={handleSubmit}
+          isSubmitting={mutation.isPending}
+          submitError={submitErrorDetails?.message ?? null}
+          serverFieldErrors={submitErrorDetails?.fields}
+        />
+      )}
+    </>
+  );
+}
+
+export default function NewReservationPage() {
+  return (
     <ProtectedRoute allowedRoles={["ADMIN", "EMPLOYEE"]}>
       <section className="space-y-6">
         <div>
@@ -78,24 +132,10 @@ export default function NewReservationPage() {
           </p>
         </div>
 
-        <QueryState
-          isLoading={isLoading}
-          isError={isError}
-          error={combinedError}
-          loadingText="Loading reservation form data..."
-          errorTitle="Failed to load form data."
-        />
-
-        {!isLoading && !isError && (
-          <CreateReservationForm
-            rooms={rooms}
-            employees={employees}
-            onSubmit={handleSubmit}
-            isSubmitting={mutation.isPending}
-            submitError={submitErrorDetails?.message ?? null}
-            serverFieldErrors={submitErrorDetails?.fields}
-          />
-        )}
+        {/* useSearchParams needs a Suspense boundary for static rendering. */}
+        <Suspense>
+          <NewReservationContent />
+        </Suspense>
       </section>
     </ProtectedRoute>
   );
