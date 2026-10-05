@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import type { CreateReservationInput, Employee, Room } from "@/lib/types";
 import { useAuth } from "@/contexts/auth-context";
@@ -13,11 +13,19 @@ type CreateReservationFormProps = {
   onSubmit: (values: CreateReservationInput) => Promise<void>;
   isSubmitting: boolean;
   submitError: string | null;
+  // Per-field messages from a backend VALIDATION_ERROR response.
+  serverFieldErrors?: Record<string, string>;
 };
 
 type FormErrors = Partial<
   Record<keyof CreateReservationInput | "form", string>
 >;
+
+const TITLE_MAX_LENGTH = 255;
+const DESCRIPTION_MAX_LENGTH = 1000;
+
+const inputClassName =
+  "w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500";
 
 function toLocalDateTimeInputValue(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -27,8 +35,26 @@ function toLocalDateTimeInputValue(date: Date) {
   )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+// Start of the hour `hoursFromNow` hours from now, as a datetime-local value.
+function roundedHoursFromNow(hoursFromNow: number) {
+  const date = new Date();
+  date.setMinutes(0, 0, 0);
+  date.setHours(date.getHours() + hoursFromNow);
+  return toLocalDateTimeInputValue(date);
+}
+
 function withSeconds(value: string) {
   return value.length === 16 ? `${value}:00` : value;
+}
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+
+  return (
+    <p id={id} className="mt-1 text-sm text-red-600">
+      {message}
+    </p>
+  );
 }
 
 export function CreateReservationForm({
@@ -39,35 +65,22 @@ export function CreateReservationForm({
   onSubmit,
   isSubmitting,
   submitError,
+  serverFieldErrors,
 }: CreateReservationFormProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
   const isOnline = useOnlineStatus();
 
-  const initialStart = useMemo(() => {
-    if (initialValues?.startTime) return initialValues.startTime.slice(0, 16);
-
-    const now = new Date();
-    now.setMinutes(0, 0, 0);
-    now.setHours(now.getHours() + 1);
-    return toLocalDateTimeInputValue(now);
-  }, [initialValues?.startTime]);
-
-  const initialEnd = useMemo(() => {
-    if (initialValues?.endTime) return initialValues.endTime.slice(0, 16);
-
-    const later = new Date();
-    later.setMinutes(0, 0, 0);
-    later.setHours(later.getHours() + 2);
-    return toLocalDateTimeInputValue(later);
-  }, [initialValues?.endTime]);
-
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [description, setDescription] = useState(
     initialValues?.description ?? "",
   );
-  const [startTime, setStartTime] = useState(initialStart);
-  const [endTime, setEndTime] = useState(initialEnd);
+  const [startTime, setStartTime] = useState(
+    () => initialValues?.startTime?.slice(0, 16) ?? roundedHoursFromNow(1),
+  );
+  const [endTime, setEndTime] = useState(
+    () => initialValues?.endTime?.slice(0, 16) ?? roundedHoursFromNow(2),
+  );
   const [attendeeCount, setAttendeeCount] = useState(
     initialValues?.attendeeCount ?? 1,
   );
@@ -81,6 +94,15 @@ export function CreateReservationForm({
 
   const selectedRoom =
     roomId === "" ? undefined : rooms.find((room) => room.id === roomId);
+
+  // Client-side errors take precedence; backend errors fill the gaps.
+  function errorFor(field: keyof CreateReservationInput) {
+    return errors[field] ?? serverFieldErrors?.[field];
+  }
+
+  function describedBy(field: keyof CreateReservationInput) {
+    return errorFor(field) ? `${field}-error` : undefined;
+  }
 
   function validate(): FormErrors {
     const nextErrors: FormErrors = {};
@@ -156,7 +178,8 @@ export function CreateReservationForm({
       startTime: withSeconds(startTime),
       endTime: withSeconds(endTime),
       attendeeCount,
-      employeeId: employeeId as number,
+      // The backend ignores employeeId for employees and books for themselves.
+      employeeId: isAdmin ? (employeeId as number) : undefined,
       roomId: roomId as number,
     });
   }
@@ -166,94 +189,132 @@ export function CreateReservationForm({
   return (
     <form
       onSubmit={handleSubmit}
+      noValidate
       className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm"
     >
       <div className="grid gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="title"
+            className="mb-2 block text-sm font-medium text-slate-700"
+          >
             Title
           </label>
           <input
+            id="title"
             value={title}
+            maxLength={TITLE_MAX_LENGTH}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
+            aria-invalid={!!errorFor("title")}
+            aria-describedby={describedBy("title")}
+            className={inputClassName}
             placeholder="Weekly team sync"
           />
-          {errors.title && (
-            <p className="mt-1 text-sm text-red-600">{errors.title}</p>
-          )}
+          <FieldError id="title-error" message={errorFor("title")} />
         </div>
 
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="description"
+            className="mb-2 block text-sm font-medium text-slate-700"
+          >
             Description
           </label>
           <textarea
+            id="description"
             value={description}
+            maxLength={DESCRIPTION_MAX_LENGTH}
             onChange={(e) => setDescription(e.target.value)}
+            aria-invalid={!!errorFor("description")}
+            aria-describedby={describedBy("description")}
             rows={4}
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
+            className={inputClassName}
             placeholder="Optional reservation notes"
+          />
+          <FieldError
+            id="description-error"
+            message={errorFor("description")}
           />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="startTime"
+            className="mb-2 block text-sm font-medium text-slate-700"
+          >
             Start time
           </label>
           <input
+            id="startTime"
             type="datetime-local"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
+            aria-invalid={!!errorFor("startTime")}
+            aria-describedby={describedBy("startTime")}
+            className={inputClassName}
           />
-          {errors.startTime && (
-            <p className="mt-1 text-sm text-red-600">{errors.startTime}</p>
-          )}
+          <FieldError id="startTime-error" message={errorFor("startTime")} />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="endTime"
+            className="mb-2 block text-sm font-medium text-slate-700"
+          >
             End time
           </label>
           <input
+            id="endTime"
             type="datetime-local"
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
+            aria-invalid={!!errorFor("endTime")}
+            aria-describedby={describedBy("endTime")}
+            className={inputClassName}
           />
-          {errors.endTime && (
-            <p className="mt-1 text-sm text-red-600">{errors.endTime}</p>
-          )}
+          <FieldError id="endTime-error" message={errorFor("endTime")} />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="attendeeCount"
+            className="mb-2 block text-sm font-medium text-slate-700"
+          >
             Attendee count
           </label>
           <input
+            id="attendeeCount"
             type="number"
             min={1}
             value={attendeeCount}
             onChange={(e) => setAttendeeCount(Number(e.target.value))}
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
+            aria-invalid={!!errorFor("attendeeCount")}
+            aria-describedby={describedBy("attendeeCount")}
+            className={inputClassName}
           />
-          {errors.attendeeCount && (
-            <p className="mt-1 text-sm text-red-600">{errors.attendeeCount}</p>
-          )}
+          <FieldError
+            id="attendeeCount-error"
+            message={errorFor("attendeeCount")}
+          />
         </div>
 
         {isAdmin && (
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="employeeId"
+              className="mb-2 block text-sm font-medium text-slate-700"
+            >
               Employee
             </label>
             <select
+              id="employeeId"
               value={employeeId}
               onChange={(e) =>
                 setEmployeeId(e.target.value ? Number(e.target.value) : "")
               }
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
+              aria-invalid={!!errorFor("employeeId")}
+              aria-describedby={describedBy("employeeId")}
+              className={inputClassName}
             >
               <option value="">Select employee</option>
               {employees.map((employee) => (
@@ -262,22 +323,29 @@ export function CreateReservationForm({
                 </option>
               ))}
             </select>
-            {errors.employeeId && (
-              <p className="mt-1 text-sm text-red-600">{errors.employeeId}</p>
-            )}
+            <FieldError
+              id="employeeId-error"
+              message={errorFor("employeeId")}
+            />
           </div>
         )}
 
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="roomId"
+            className="mb-2 block text-sm font-medium text-slate-700"
+          >
             Room
           </label>
           <select
+            id="roomId"
             value={roomId}
             onChange={(e) =>
               setRoomId(e.target.value ? Number(e.target.value) : "")
             }
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-slate-500"
+            aria-invalid={!!errorFor("roomId")}
+            aria-describedby={describedBy("roomId")}
+            className={inputClassName}
           >
             <option value="">Select room</option>
             {rooms.map((room) => (
@@ -286,9 +354,7 @@ export function CreateReservationForm({
               </option>
             ))}
           </select>
-          {errors.roomId && (
-            <p className="mt-1 text-sm text-red-600">{errors.roomId}</p>
-          )}
+          <FieldError id="roomId-error" message={errorFor("roomId")} />
         </div>
       </div>
 
@@ -308,7 +374,10 @@ export function CreateReservationForm({
       )}
 
       {submitError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 p-4"
+        >
           <p className="text-sm text-red-700">{submitError}</p>
         </div>
       )}

@@ -3,8 +3,12 @@ import {
   mockReservations,
   mockRooms,
 } from "./mock-data";
+import { getStoredAuthUser } from "./auth-storage";
 import type {
   CreateReservationInput,
+  CurrentUser,
+  LoginInput,
+  LoginResponse,
   Reservation,
   ReservationStatus,
 } from "./types";
@@ -14,6 +18,40 @@ function delay(ms = 400) {
 }
 
 let reservations = [...mockReservations];
+
+const MOCK_TOKEN_PREFIX = "mock-jwt-token:";
+
+// Mirrors the seeded backend accounts: "admin" has no linked employee, every
+// other username is linked to the first mock employee.
+function mockUserFor(username: string): CurrentUser {
+  const isAdmin = username === "admin";
+  const employee = isAdmin ? null : mockEmployees[0];
+
+  return {
+    id: isAdmin ? 1 : 2,
+    username,
+    role: isAdmin ? "ADMIN" : "EMPLOYEE",
+    employeeId: employee?.id ?? null,
+    employeeName: employee?.name ?? null,
+  };
+}
+
+export async function loginMock(input: LoginInput): Promise<LoginResponse> {
+  await delay();
+
+  const user = mockUserFor(input.username);
+
+  return {
+    token: `${MOCK_TOKEN_PREFIX}${user.username}`,
+    username: user.username,
+    role: user.role,
+  };
+}
+
+export async function getMeMock(token: string): Promise<CurrentUser> {
+  await delay();
+  return mockUserFor(token.slice(MOCK_TOKEN_PREFIX.length));
+}
 
 export async function getActiveRoomsMock() {
   await delay();
@@ -27,13 +65,13 @@ export async function getActiveEmployeesMock() {
 
 export async function getActiveReservationsMock() {
   await delay();
-  return reservations;
+  return reservations.filter((r) => !r.archived);
 }
 
 export async function getReservationMock(id: number) {
   await delay();
   const res = reservations.find((r) => r.id === id);
-  if (!res) throw new Error("Not found");
+  if (!res) throw new Error("Reservation not found.");
   return res;
 }
 
@@ -42,13 +80,20 @@ export async function createReservationMock(
 ): Promise<Reservation> {
   await delay();
 
+  // Like the backend, employees always book for themselves.
+  const currentUser = getStoredAuthUser();
+  const employeeId =
+    currentUser?.role === "EMPLOYEE"
+      ? (currentUser.employeeId ?? 0)
+      : (input.employeeId ?? 0);
+
   const newReservation: Reservation = {
     id: Date.now(),
     ...input,
-    status: "PENDING",
+    employeeId,
+    status: "PLANNED",
     archived: false,
-    employeeName:
-      mockEmployees.find((e) => e.id === input.employeeId)?.name ?? "",
+    employeeName: mockEmployees.find((e) => e.id === employeeId)?.name ?? "",
     roomName:
       mockRooms.find((r) => r.id === input.roomId)?.name ?? "",
   };
@@ -69,6 +114,7 @@ export async function updateReservationMock(
       ? {
           ...r,
           ...input,
+          employeeId: input.employeeId ?? r.employeeId,
         }
       : r
   );
@@ -89,10 +135,12 @@ export async function updateReservationStatusMock(
   return reservations.find((r) => r.id === id)!;
 }
 
-export async function deleteReservationMock(id: number) {
+export async function archiveReservationMock(id: number) {
   await delay();
 
-  reservations = reservations.filter((r) => r.id !== id);
+  reservations = reservations.map((r) =>
+    r.id === id ? { ...r, archived: true } : r
+  );
 }
 
 export async function getRoomMock(id: number) {
@@ -101,7 +149,7 @@ export async function getRoomMock(id: number) {
   const room = mockRooms.find((room) => room.id === id);
 
   if (!room) {
-    throw new Error("Room not found");
+    throw new Error("Room not found.");
   }
 
   return room;
@@ -110,5 +158,7 @@ export async function getRoomMock(id: number) {
 export async function getReservationsByRoomMock(roomId: number) {
   await delay();
 
-  return reservations.filter((reservation) => reservation.roomId === roomId);
+  return reservations.filter(
+    (reservation) => reservation.roomId === roomId && !reservation.archived,
+  );
 }

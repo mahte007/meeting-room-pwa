@@ -9,16 +9,22 @@ import {
 } from "@/lib/api";
 import { QueryState } from "@/components/ui/query-state";
 import { ProtectedRoute } from "@/components/auth/protected-route";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function HomePage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+
   const roomsQuery = useQuery({
     queryKey: ["rooms", "active"],
     queryFn: getActiveRooms,
   });
 
+  // /api/employees is admin-only; employees would get a 403.
   const employeesQuery = useQuery({
     queryKey: ["employees", "active"],
     queryFn: getActiveEmployees,
+    enabled: isAdmin,
   });
 
   const reservationsQuery = useQuery({
@@ -28,11 +34,13 @@ export default function HomePage() {
 
   const isLoading =
     roomsQuery.isLoading ||
-    employeesQuery.isLoading ||
+    (isAdmin && employeesQuery.isLoading) ||
     reservationsQuery.isLoading;
 
   const isError =
-    roomsQuery.isError || employeesQuery.isError || reservationsQuery.isError;
+    roomsQuery.isError ||
+    (isAdmin && employeesQuery.isError) ||
+    reservationsQuery.isError;
 
   const error =
     roomsQuery.error || employeesQuery.error || reservationsQuery.error;
@@ -41,21 +49,13 @@ export default function HomePage() {
   const employees = employeesQuery.data ?? [];
   const reservations = reservationsQuery.data ?? [];
 
-  const pendingReservations = reservations.filter(
-    (reservation) => reservation.status === "PENDING",
+  const plannedReservations = reservations.filter(
+    (reservation) => reservation.status === "PLANNED",
   );
 
   const approvedReservations = reservations.filter(
     (reservation) => reservation.status === "APPROVED",
   );
-
-  /* const cancelledReservations = reservations.filter(
-    (reservation) => reservation.status === "CANCELLED",
-  );
-
-  const completedReservations = reservations.filter(
-    (reservation) => reservation.status === "COMPLETED",
-  ); */
 
   const cards = [
     {
@@ -63,19 +63,23 @@ export default function HomePage() {
       value: rooms.length,
       href: "/rooms",
     },
-    {
-      label: "Active employees",
-      value: employees.length,
-      href: "/employees",
-    },
+    ...(isAdmin
+      ? [
+          {
+            label: "Active employees",
+            value: employees.length,
+            href: "/employees",
+          },
+        ]
+      : []),
     {
       label: "Active reservations",
       value: reservations.length,
       href: "/reservations",
     },
     {
-      label: "Pending reservations",
-      value: pendingReservations.length,
+      label: "Awaiting approval",
+      value: plannedReservations.length,
       href: "/reservations",
     },
   ];
@@ -125,9 +129,9 @@ export default function HomePage() {
 
                 <dl className="mt-4 space-y-3 text-sm text-slate-700">
                   <div className="flex justify-between gap-4">
-                    <dt>Pending</dt>
+                    <dt>Planned (awaiting approval)</dt>
                     <dd className="font-semibold">
-                      {pendingReservations.length}
+                      {plannedReservations.length}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-4">

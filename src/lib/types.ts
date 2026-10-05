@@ -17,10 +17,20 @@ export type Employee = {
 };
 
 export type ReservationStatus =
-  | "PENDING"
+  | "PLANNED"
   | "APPROVED"
   | "CANCELLED"
   | "COMPLETED";
+
+export const ALLOWED_TRANSITIONS: Record<ReservationStatus, ReservationStatus[]> = {
+  PLANNED: ["APPROVED", "CANCELLED"],
+  APPROVED: ["CANCELLED", "COMPLETED"],
+  CANCELLED: [],
+  COMPLETED: [],
+};
+
+// Cancelled and completed reservations can no longer be edited.
+export const FINAL_STATUSES: ReservationStatus[] = ["CANCELLED", "COMPLETED"];
 
 export type Reservation = {
   id: number;
@@ -48,12 +58,11 @@ export type CreateReservationInput = {
 };
 
 export type ApiErrorPayload = {
-  timestamp?: string;
-  status?: number;
-  error?: string;
-  message?: string;
-  path?: string;
-  validationErrors?: Record<string, string>;
+  error: string;
+  message: string;
+  timestamp: string;
+  // Only present for VALIDATION_ERROR responses.
+  fields?: Record<string, string>;
 };
 
 export type UserRole = "ADMIN" | "EMPLOYEE";
@@ -69,8 +78,19 @@ export type LoginResponse = {
   role: UserRole;
 };
 
+// Returned by GET /api/me.
+export type CurrentUser = {
+  id: number;
+  username: string;
+  role: UserRole;
+  employeeId: number | null;
+  employeeName: string | null;
+};
+
 export type AuthUser = {
   username: string;
   role: UserRole;
   token: string;
+  employeeId: number | null;
+  employeeName: string | null;
 };
