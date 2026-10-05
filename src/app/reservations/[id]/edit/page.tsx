@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CreateReservationForm } from "@/components/reservations/create-reservation-form";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import {
   getActiveEmployees,
   getActiveRooms,
@@ -91,18 +91,12 @@ export default function EditReservationPage() {
     ? getErrorDetails(mutation.error, "Failed to update reservation.")
     : null;
 
-  const isLoading =
-    reservationQuery.isLoading ||
-    roomsQuery.isLoading ||
-    (isAdmin && employeesQuery.isLoading);
-
-  const isError =
-    reservationQuery.isError ||
-    roomsQuery.isError ||
-    (isAdmin && employeesQuery.isError);
-
-  const combinedError =
-    reservationQuery.error || roomsQuery.error || employeesQuery.error;
+  const queryState = combineQueries(
+    reservationQuery,
+    roomsQuery,
+    isAdmin && employeesQuery,
+  );
+  const isReady = queryState.status === "ready";
 
   const initialValues = useMemo(() => {
     const reservation = reservationQuery.data;
@@ -147,14 +141,12 @@ export default function EditReservationPage() {
         ) : (
           <>
             <QueryState
-              isLoading={isLoading}
-              isError={isError}
-              error={combinedError}
+              state={queryState}
               loadingText="Loading reservation..."
               errorTitle="Failed to load reservation."
             />
 
-            {!isLoading && !isError && editBlockReason && (
+            {isReady && editBlockReason && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
                 <p className="text-sm text-amber-800">{editBlockReason}</p>
                 <Link
@@ -166,7 +158,7 @@ export default function EditReservationPage() {
               </div>
             )}
 
-            {!isLoading && !isError && !editBlockReason && initialValues && (
+            {isReady && !editBlockReason && initialValues && (
               <CreateReservationForm
                 rooms={roomsQuery.data ?? []}
                 employees={employeesQuery.data ?? []}

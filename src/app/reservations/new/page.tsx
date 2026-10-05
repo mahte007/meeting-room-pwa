@@ -4,7 +4,7 @@ import { Suspense, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CreateReservationForm } from "@/components/reservations/create-reservation-form";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import {
   createReservation,
   getActiveEmployees,
@@ -77,11 +77,7 @@ function NewReservationContent() {
     ? getErrorDetails(mutation.error, "Failed to create reservation.")
     : null;
 
-  const isLoading =
-    roomsQuery.isLoading || (isAdmin && employeesQuery.isLoading);
-
-  const isError = roomsQuery.isError || (isAdmin && employeesQuery.isError);
-  const combinedError = roomsQuery.error || employeesQuery.error;
+  const queryState = combineQueries(roomsQuery, isAdmin && employeesQuery);
 
   const rooms = useMemo(() => roomsQuery.data ?? [], [roomsQuery.data]);
   const employees = useMemo(
@@ -98,14 +94,12 @@ function NewReservationContent() {
   return (
     <>
       <QueryState
-        isLoading={isLoading}
-        isError={isError}
-        error={combinedError}
+        state={queryState}
         loadingText="Loading reservation form data..."
         errorTitle="Failed to load form data."
       />
 
-      {!isLoading && !isError && (
+      {queryState.status === "ready" && (
         <CreateReservationForm
           rooms={rooms}
           employees={employees}

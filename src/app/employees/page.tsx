@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { EmployeesList } from "@/components/employees/employees-list";
 import { Alert } from "@/components/ui/alert";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import {
   activateEmployee,
@@ -23,15 +23,13 @@ export default function EmployeesPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  const {
-    data: employees = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
+  const employeesQuery = useQuery({
     queryKey: ["employees", "all"],
     queryFn: getEmployees,
   });
+
+  const employees = employeesQuery.data ?? [];
+  const queryState = combineQueries(employeesQuery);
 
   const visibleEmployees = showInactive
     ? employees
@@ -126,14 +124,12 @@ export default function EmployeesPage() {
         )}
 
         <QueryState
-          isLoading={isLoading}
-          isError={isError}
-          error={error}
+          state={queryState}
           loadingText="Loading employees..."
           errorTitle="Failed to load employees."
         />
 
-        {!isLoading && !isError && (
+        {queryState.status === "ready" && (
           <EmployeesList
             employees={visibleEmployees}
             onDeactivate={handleDeactivate}

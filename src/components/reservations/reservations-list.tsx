@@ -9,6 +9,7 @@ import {
 } from "@/lib/types";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useAuth } from "@/contexts/auth-context";
+import { downloadIcs, toIcsFileName } from "@/lib/ics";
 
 type ReservationsListProps = {
   reservations: Reservation[];
@@ -100,8 +101,12 @@ export function ReservationsList({
             ? ALLOWED_TRANSITIONS[reservation.status]
             : [];
 
-        const hasActions =
+        // Actions that need the server, and so are disabled offline.
+        const hasServerActions =
           canEdit || canArchive || canRestore || transitions.length > 0;
+
+        // Works offline too: the file is built from data already loaded.
+        const canExport = !isArchived && reservation.status !== "CANCELLED";
 
         return (
           <article
@@ -155,13 +160,13 @@ export function ReservationsList({
               </div>
             </dl>
 
-            {hasActions && !isOnline && (
+            {hasServerActions && !isOnline && (
               <p className="mt-5 text-sm text-amber-700">
                 Actions are disabled while offline.
               </p>
             )}
 
-            {hasActions && (
+            {(hasServerActions || canExport) && (
               <div className="mt-5 flex flex-wrap gap-2">
                 {canEdit &&
                   (actionsDisabled ? (
@@ -190,6 +195,17 @@ export function ReservationsList({
                     {getTransitionLabel(reservation.status, nextStatus)}
                   </button>
                 ))}
+
+                {canExport && (
+                  <button
+                    onClick={() =>
+                      downloadIcs([reservation], toIcsFileName(reservation.title))
+                    }
+                    className="cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50"
+                  >
+                    Add to calendar
+                  </button>
+                )}
 
                 {canRestore && (
                   <button

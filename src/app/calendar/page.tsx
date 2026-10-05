@@ -11,7 +11,7 @@ import {
   WeekCalendar,
 } from "@/components/calendar/week-calendar";
 import { inputClassName } from "@/components/ui/form-field";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import { useAuth } from "@/contexts/auth-context";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { getActiveReservations, getActiveRooms } from "@/lib/api";
@@ -108,8 +108,7 @@ function CalendarContent() {
     year: "numeric",
   })}`;
 
-  const isLoading = reservationsQuery.isLoading || roomsQuery.isLoading;
-  const isError = reservationsQuery.isError || roomsQuery.isError;
+  const queryState = combineQueries(reservationsQuery, roomsQuery);
 
   return (
     <>
@@ -176,14 +175,12 @@ function CalendarContent() {
       </div>
 
       <QueryState
-        isLoading={isLoading}
-        isError={isError}
-        error={reservationsQuery.error || roomsQuery.error}
+        state={queryState}
         loadingText="Loading calendar..."
         errorTitle="Failed to load calendar."
       />
 
-      {!isLoading && !isError && (
+      {queryState.status === "ready" && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
             <p>

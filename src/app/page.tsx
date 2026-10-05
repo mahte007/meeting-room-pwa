@@ -7,7 +7,7 @@ import {
   getActiveReservations,
   getActiveRooms,
 } from "@/lib/api";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -32,18 +32,11 @@ export default function HomePage() {
     queryFn: getActiveReservations,
   });
 
-  const isLoading =
-    roomsQuery.isLoading ||
-    (isAdmin && employeesQuery.isLoading) ||
-    reservationsQuery.isLoading;
-
-  const isError =
-    roomsQuery.isError ||
-    (isAdmin && employeesQuery.isError) ||
-    reservationsQuery.isError;
-
-  const error =
-    roomsQuery.error || employeesQuery.error || reservationsQuery.error;
+  const queryState = combineQueries(
+    roomsQuery,
+    isAdmin && employeesQuery,
+    reservationsQuery,
+  );
 
   const rooms = roomsQuery.data ?? [];
   const employees = employeesQuery.data ?? [];
@@ -97,14 +90,12 @@ export default function HomePage() {
         </div>
 
         <QueryState
-          isLoading={isLoading}
-          isError={isError}
-          error={error}
+          state={queryState}
           loadingText="Loading dashboard..."
           errorTitle="Failed to load dashboard data."
         />
 
-        {!isLoading && !isError && (
+        {queryState.status === "ready" && (
           <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {cards.map((card) => (

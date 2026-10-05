@@ -12,7 +12,7 @@ import {
   inputClassName,
   primaryButtonClassName,
 } from "@/components/ui/form-field";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { getAvailableRooms } from "@/lib/api";
 import {
@@ -222,9 +222,7 @@ function AvailabilitySearch() {
           </h2>
 
           <QueryState
-            isLoading={roomsQuery.isLoading}
-            isError={roomsQuery.isError}
-            error={roomsQuery.error}
+            state={combineQueries(roomsQuery)}
             loadingText="Checking availability..."
             errorTitle="Failed to check availability."
           />

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { Alert } from "@/components/ui/alert";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import { getLinkableEmployees } from "@/components/users/account-fields";
 import { CreateUserForm } from "@/components/users/create-user-form";
 import { UserRow } from "@/components/users/user-row";
@@ -30,8 +30,7 @@ export default function UsersPage() {
   const users = usersQuery.data ?? [];
   const employees = employeesQuery.data ?? [];
 
-  const isLoading = usersQuery.isLoading || employeesQuery.isLoading;
-  const isError = usersQuery.isError || employeesQuery.isError;
+  const queryState = combineQueries(usersQuery, employeesQuery);
 
   return (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
@@ -53,14 +52,12 @@ export default function UsersPage() {
         {message && <Alert variant="success">{message}</Alert>}
 
         <QueryState
-          isLoading={isLoading}
-          isError={isError}
-          error={usersQuery.error || employeesQuery.error}
+          state={queryState}
           loadingText="Loading users..."
           errorTitle="Failed to load users."
         />
 
-        {!isLoading && !isError && (
+        {queryState.status === "ready" && (
           <>
             <CreateUserForm
               linkableEmployees={getLinkableEmployees(employees, users)}

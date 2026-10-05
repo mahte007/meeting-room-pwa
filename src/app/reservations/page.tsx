@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ReservationsList } from "@/components/reservations/reservations-list";
 import { Alert } from "@/components/ui/alert";
-import { QueryState } from "@/components/ui/query-state";
+import { combineQueries, QueryState } from "@/components/ui/query-state";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import type { AuthUser, Reservation, ReservationStatus } from "@/lib/types";
 import { ProtectedRoute } from "@/components/auth/protected-route";
+import { downloadIcs, toIcsFileName } from "@/lib/ics";
 
 type ReservationView = "all" | "mine" | "approval" | "archived";
 
@@ -116,15 +117,26 @@ function ReservationsView({
   const successMessage =
     actionMessage === undefined ? initialMessage : actionMessage;
 
-  const {
-    data: reservations = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
+  const reservationsQuery = useQuery({
     queryKey: ["reservations", "view", view.id, employeeId],
     queryFn: () => fetchView(view.id, employeeId),
   });
+
+  const reservations = reservationsQuery.data ?? [];
+  const queryState = combineQueries(reservationsQuery);
+
+  // Cancelled reservations no longer take place, so they aren't exported.
+  const exportable = reservations.filter(
+    (reservation) => !reservation.archived && reservation.status !== "CANCELLED",
+  );
+
+  function handleExport() {
+    downloadIcs(
+      exportable,
+      toIcsFileName(`reservations ${view.label}`),
+      `Meeting rooms: ${view.label}`,
+    );
+  }
 
   async function onMutationSuccess(message: string) {
     await queryClient.invalidateQueries({ queryKey: ["reservations"] });
@@ -180,7 +192,20 @@ function ReservationsView({
 
   return (
     <>
-      <p className="text-sm text-slate-600">{view.description}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-600">{view.description}</p>
+
+        {view.id !== "archived" && (
+          <button
+            onClick={handleExport}
+            disabled={exportable.length === 0}
+            title="Download these reservations as an .ics file for Google Calendar, Outlook or Apple Calendar"
+            className="cursor-pointer rounded-xl border bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:cursor-default disabled:opacity-60"
+          >
+            Export to calendar
+          </button>
+        )}
+      </div>
 
       {successMessage && <Alert variant="success">{successMessage}</Alert>}
 
@@ -193,14 +218,12 @@ function ReservationsView({
       )}
 
       <QueryState
-        isLoading={isLoading}
-        isError={isError}
-        error={error}
+        state={queryState}
         loadingText="Loading reservations..."
         errorTitle="Failed to load reservations."
       />
 
-      {!isLoading && !isError && (
+      {queryState.status === "ready" && (
         <ReservationsList
           reservations={reservations}
           onArchive={handleArchive}

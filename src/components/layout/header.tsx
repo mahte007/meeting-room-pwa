@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { InstallButton } from "@/components/pwa/install-button";
 import type { UserRole } from "@/lib/types";
 
 type NavItem = {
@@ -35,8 +36,8 @@ export function Header() {
           Meeting Room Reservation
         </Link>
 
-        {isAuthenticated && (
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          {isAuthenticated && (
             <nav className="flex flex-wrap gap-4 text-sm font-medium text-slate-700">
               {visibleNavItems.map((item) => (
                 <Link
@@ -48,24 +49,31 @@ export function Header() {
                 </Link>
               ))}
             </nav>
+          )}
 
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <Link
-                href="/profile"
-                className="hover:text-slate-950 hover:underline"
-              >
-                {user?.username} ({user?.role})
-              </Link>
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            {/* Installing doesn't need an account, so it shows when signed out too. */}
+            <InstallButton />
 
-              <button
-                onClick={logout}
-                className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-slate-50"
-              >
-                Logout
-              </button>
-            </div>
+            {isAuthenticated && (
+              <>
+                <Link
+                  href="/profile"
+                  className="hover:text-slate-950 hover:underline"
+                >
+                  {user?.username} ({user?.role})
+                </Link>
+
+                <button
+                  onClick={logout}
+                  className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-slate-50"
+                >
+                  Logout
+                </button>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </header>
   );
