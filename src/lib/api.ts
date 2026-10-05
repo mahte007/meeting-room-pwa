@@ -1,6 +1,7 @@
 import { env } from "./env";
 import type {
   ApiErrorPayload,
+  ChangePasswordInput,
   CreateReservationInput,
   CurrentUser,
   Employee,
@@ -22,6 +23,7 @@ import {
   getRoomMock,
   getReservationsByRoomMock,
   loginMock,
+  changePasswordMock,
   getMeMock,
 } from "./mock-api";
 import { clearStoredAuthUser, getStoredAuthUser } from "./auth-storage";
@@ -182,4 +184,12 @@ export function getRoom(id: number) {
 export function getReservationsByRoom(roomId: number) {
   if (env.useMock) return getReservationsByRoomMock(roomId);
   return apiFetch<Reservation[]>(`/api/reservations/room/${roomId}`);
+}
+
+export function changePassword(input: ChangePasswordInput) {
+  if (env.useMock) return changePasswordMock(input);
+  return apiFetch<void>("/api/me/password", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }

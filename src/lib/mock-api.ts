@@ -4,7 +4,9 @@ import {
   mockRooms,
 } from "./mock-data";
 import { getStoredAuthUser } from "./auth-storage";
+import { PASSWORD_MIN_LENGTH } from "./types";
 import type {
+  ChangePasswordInput,
   CreateReservationInput,
   CurrentUser,
   LoginInput,
@@ -161,4 +163,13 @@ export async function getReservationsByRoomMock(roomId: number) {
   return reservations.filter(
     (reservation) => reservation.roomId === roomId && !reservation.archived,
   );
+}
+
+export async function changePasswordMock(input: ChangePasswordInput) {
+  await delay();
+
+  // The mock has no stored passwords, so only the backend's length rule is checked.
+  if (input.newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw new Error("Password must be at least 8 characters.");
+  }
 }

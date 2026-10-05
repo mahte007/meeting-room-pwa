@@ -47,9 +47,12 @@ export function Header() {
             </nav>
 
             <div className="flex items-center gap-2 text-sm text-slate-600">
-              <span>
+              <Link
+                href="/profile"
+                className="hover:text-slate-950 hover:underline"
+              >
                 {user?.username} ({user?.role})
-              </span>
+              </Link>
 
               <button
                 onClick={logout}
