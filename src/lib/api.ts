@@ -9,12 +9,19 @@ import type {
   ReservationStatus,
   Room,
   SaveRoomInput,
+  SaveEmployeeInput,
   LoginInput,
   LoginResponse,
 } from "./types";
 import {
   getActiveRoomsMock,
   getActiveEmployeesMock,
+  getEmployeesMock,
+  getEmployeeMock,
+  createEmployeeMock,
+  updateEmployeeMock,
+  deactivateEmployeeMock,
+  activateEmployeeMock,
   getActiveReservationsMock,
   createReservationMock,
   updateReservationMock,
@@ -243,4 +250,45 @@ export function deactivateRoom(id: number) {
 export function activateRoom(id: number) {
   if (env.useMock) return activateRoomMock(id);
   return apiFetch<Room>(`/api/rooms/${id}/activate`, { method: "PATCH" });
+}
+
+// Includes inactive employees. Admin only.
+export function getEmployees() {
+  if (env.useMock) return getEmployeesMock();
+  return apiFetch<Employee[]>("/api/employees");
+}
+
+export function getEmployee(id: number) {
+  if (env.useMock) return getEmployeeMock(id);
+  return apiFetch<Employee>(`/api/employees/${id}`);
+}
+
+export function createEmployee(input: SaveEmployeeInput) {
+  if (env.useMock) return createEmployeeMock(input);
+  return apiFetch<Employee>("/api/employees", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateEmployee(id: number, input: SaveEmployeeInput) {
+  if (env.useMock) return updateEmployeeMock(id, input);
+  return apiFetch<Employee>(`/api/employees/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+// DELETE does not remove the employee, it sets `active: false`. This also
+// locks the employee's login account until they are activated again.
+export function deactivateEmployee(id: number) {
+  if (env.useMock) return deactivateEmployeeMock(id);
+  return apiFetch<void>(`/api/employees/${id}`, { method: "DELETE" });
+}
+
+export function activateEmployee(id: number) {
+  if (env.useMock) return activateEmployeeMock(id);
+  return apiFetch<Employee>(`/api/employees/${id}/activate`, {
+    method: "PATCH",
+  });
 }

@@ -108,3 +108,11 @@ export type SaveRoomInput = {
   location: string;
   hasProjector: boolean;
 };
+
+export type SaveEmployeeInput = {
+  name: string;
+  email: string;
+  department: string;
+  // Job title, not the permission role.
+  role: string;
+};

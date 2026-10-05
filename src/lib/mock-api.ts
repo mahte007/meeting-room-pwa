@@ -16,6 +16,8 @@ import type {
   ReservationStatus,
   Room,
   SaveRoomInput,
+  Employee,
+  SaveEmployeeInput,
 } from "./types";
 
 function delay(ms = 400) {
@@ -24,6 +26,7 @@ function delay(ms = 400) {
 
 let reservations = [...mockReservations];
 let rooms = [...mockRooms];
+let employees = [...mockEmployees];
 
 const MOCK_TOKEN_PREFIX = "mock-jwt-token:";
 
@@ -31,7 +34,7 @@ const MOCK_TOKEN_PREFIX = "mock-jwt-token:";
 // other username is linked to the first mock employee.
 function mockUserFor(username: string): CurrentUser {
   const isAdmin = username === "admin";
-  const employee = isAdmin ? null : mockEmployees[0];
+  const employee = isAdmin ? null : employees[0];
 
   return {
     id: isAdmin ? 1 : 2,
@@ -71,7 +74,12 @@ export async function getRoomsMock() {
 
 export async function getActiveEmployeesMock() {
   await delay();
-  return mockEmployees;
+  return employees.filter((employee) => employee.active);
+}
+
+export async function getEmployeesMock() {
+  await delay();
+  return employees;
 }
 
 export async function getActiveReservationsMock() {
@@ -104,7 +112,7 @@ export async function createReservationMock(
     employeeId,
     status: "PLANNED",
     archived: false,
-    employeeName: mockEmployees.find((e) => e.id === employeeId)?.name ?? "",
+    employeeName: employees.find((e) => e.id === employeeId)?.name ?? "",
     roomName:
       rooms.find((r) => r.id === input.roomId)?.name ?? "",
   };
@@ -270,4 +278,80 @@ export async function activateRoomMock(id: number) {
   );
 
   return rooms.find((room) => room.id === id)!;
+}
+
+export async function getEmployeeMock(id: number) {
+  await delay();
+
+  const employee = employees.find((e) => e.id === id);
+
+  if (!employee) {
+    throw createApiError(404, "NOT_FOUND", "Employee not found.");
+  }
+
+  return employee;
+}
+
+function assertUniqueEmail(email: string, exceptId?: number) {
+  const taken = employees.some(
+    (e) =>
+      e.id !== exceptId && e.email.toLowerCase() === email.toLowerCase(),
+  );
+
+  if (taken) {
+    throw createApiError(400, "BAD_REQUEST", "Email already exists.");
+  }
+}
+
+export async function createEmployeeMock(
+  input: SaveEmployeeInput,
+): Promise<Employee> {
+  await delay();
+  assertUniqueEmail(input.email);
+
+  const employee: Employee = { id: Date.now(), ...input, active: true };
+  employees = [...employees, employee];
+
+  return employee;
+}
+
+export async function updateEmployeeMock(id: number, input: SaveEmployeeInput) {
+  await delay();
+  assertUniqueEmail(input.email, id);
+
+  employees = employees.map((e) => (e.id === id ? { ...e, ...input } : e));
+
+  return employees.find((e) => e.id === id)!;
+}
+
+export async function deactivateEmployeeMock(id: number) {
+  await delay();
+
+  const hasUpcoming = reservations.some(
+    (r) =>
+      r.employeeId === id &&
+      !r.archived &&
+      (r.status === "PLANNED" || r.status === "APPROVED") &&
+      new Date(r.endTime) > new Date(),
+  );
+
+  if (hasUpcoming) {
+    throw createApiError(
+      400,
+      "BAD_REQUEST",
+      "Employee cannot be deactivated because they have upcoming reservations.",
+    );
+  }
+
+  employees = employees.map((e) =>
+    e.id === id ? { ...e, active: false } : e,
+  );
+}
+
+export async function activateEmployeeMock(id: number) {
+  await delay();
+
+  employees = employees.map((e) => (e.id === id ? { ...e, active: true } : e));
+
+  return employees.find((e) => e.id === id)!;
 }
