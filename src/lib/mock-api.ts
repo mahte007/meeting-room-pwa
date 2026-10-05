@@ -4,6 +4,7 @@ import {
   mockRooms,
 } from "./mock-data";
 import { getStoredAuthUser } from "./auth-storage";
+import { createApiError } from "./api-error";
 import { PASSWORD_MIN_LENGTH } from "./types";
 import type {
   ChangePasswordInput,
@@ -13,6 +14,8 @@ import type {
   LoginResponse,
   Reservation,
   ReservationStatus,
+  Room,
+  SaveRoomInput,
 } from "./types";
 
 function delay(ms = 400) {
@@ -20,6 +23,7 @@ function delay(ms = 400) {
 }
 
 let reservations = [...mockReservations];
+let rooms = [...mockRooms];
 
 const MOCK_TOKEN_PREFIX = "mock-jwt-token:";
 
@@ -57,7 +61,12 @@ export async function getMeMock(token: string): Promise<CurrentUser> {
 
 export async function getActiveRoomsMock() {
   await delay();
-  return mockRooms;
+  return rooms.filter((room) => room.active);
+}
+
+export async function getRoomsMock() {
+  await delay();
+  return rooms;
 }
 
 export async function getActiveEmployeesMock() {
@@ -97,7 +106,7 @@ export async function createReservationMock(
     archived: false,
     employeeName: mockEmployees.find((e) => e.id === employeeId)?.name ?? "",
     roomName:
-      mockRooms.find((r) => r.id === input.roomId)?.name ?? "",
+      rooms.find((r) => r.id === input.roomId)?.name ?? "",
   };
 
   reservations = [...reservations, newReservation];
@@ -148,7 +157,7 @@ export async function archiveReservationMock(id: number) {
 export async function getRoomMock(id: number) {
   await delay();
 
-  const room = mockRooms.find((room) => room.id === id);
+  const room = rooms.find((room) => room.id === id);
 
   if (!room) {
     throw new Error("Room not found.");
@@ -196,4 +205,69 @@ export async function restoreReservationMock(id: number) {
   );
 
   return reservations.find((r) => r.id === id)!;
+}
+
+function assertUniqueRoomName(name: string, exceptId?: number) {
+  const taken = rooms.some(
+    (room) =>
+      room.id !== exceptId &&
+      room.name.toLowerCase() === name.trim().toLowerCase(),
+  );
+
+  if (taken) {
+    throw createApiError(400, "BAD_REQUEST", "Room name already exists.");
+  }
+}
+
+export async function createRoomMock(input: SaveRoomInput): Promise<Room> {
+  await delay();
+  assertUniqueRoomName(input.name);
+
+  const room: Room = { id: Date.now(), ...input, active: true };
+  rooms = [...rooms, room];
+
+  return room;
+}
+
+export async function updateRoomMock(id: number, input: SaveRoomInput) {
+  await delay();
+  assertUniqueRoomName(input.name, id);
+
+  rooms = rooms.map((room) => (room.id === id ? { ...room, ...input } : room));
+
+  return rooms.find((room) => room.id === id)!;
+}
+
+export async function deactivateRoomMock(id: number) {
+  await delay();
+
+  const hasUpcoming = reservations.some(
+    (r) =>
+      r.roomId === id &&
+      !r.archived &&
+      (r.status === "PLANNED" || r.status === "APPROVED") &&
+      new Date(r.endTime) > new Date(),
+  );
+
+  if (hasUpcoming) {
+    throw createApiError(
+      400,
+      "BAD_REQUEST",
+      "Room cannot be deactivated because it has upcoming reservations.",
+    );
+  }
+
+  rooms = rooms.map((room) =>
+    room.id === id ? { ...room, active: false } : room,
+  );
+}
+
+export async function activateRoomMock(id: number) {
+  await delay();
+
+  rooms = rooms.map((room) =>
+    room.id === id ? { ...room, active: true } : room,
+  );
+
+  return rooms.find((room) => room.id === id)!;
 }

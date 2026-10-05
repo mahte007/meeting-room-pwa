@@ -8,6 +8,7 @@ import type {
   Reservation,
   ReservationStatus,
   Room,
+  SaveRoomInput,
   LoginInput,
   LoginResponse,
 } from "./types";
@@ -24,24 +25,20 @@ import {
   getReservationsByEmployeeMock,
   getReservationMock,
   getRoomMock,
+  getRoomsMock,
+  createRoomMock,
+  updateRoomMock,
+  deactivateRoomMock,
+  activateRoomMock,
   getReservationsByRoomMock,
   loginMock,
   changePasswordMock,
   getMeMock,
 } from "./mock-api";
 import { clearStoredAuthUser, getStoredAuthUser } from "./auth-storage";
+import { ApiError } from "./api-error";
 
-export class ApiError extends Error {
-  status: number;
-  payload?: ApiErrorPayload;
-
-  constructor(message: string, status: number, payload?: ApiErrorPayload) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.payload = payload;
-  }
-}
+export { ApiError };
 
 /**
  * Turns a failed request into a message for the user plus, for validation
@@ -213,4 +210,37 @@ export function restoreReservation(id: number) {
   return apiFetch<Reservation>(`/api/reservations/${id}/restore`, {
     method: "PATCH",
   });
+}
+
+// Includes inactive rooms.
+export function getRooms() {
+  if (env.useMock) return getRoomsMock();
+  return apiFetch<Room[]>("/api/rooms");
+}
+
+export function createRoom(input: SaveRoomInput) {
+  if (env.useMock) return createRoomMock(input);
+  return apiFetch<Room>("/api/rooms", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateRoom(id: number, input: SaveRoomInput) {
+  if (env.useMock) return updateRoomMock(id, input);
+  return apiFetch<Room>(`/api/rooms/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+// DELETE does not remove the room, it sets `active: false`.
+export function deactivateRoom(id: number) {
+  if (env.useMock) return deactivateRoomMock(id);
+  return apiFetch<void>(`/api/rooms/${id}`, { method: "DELETE" });
+}
+
+export function activateRoom(id: number) {
+  if (env.useMock) return activateRoomMock(id);
+  return apiFetch<Room>(`/api/rooms/${id}/activate`, { method: "PATCH" });
 }

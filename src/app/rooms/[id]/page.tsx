@@ -7,10 +7,13 @@ import { QueryState } from "@/components/ui/query-state";
 import { ReservationsList } from "@/components/reservations/reservations-list";
 import { getReservationsByRoom, getRoom } from "@/lib/api";
 import { ProtectedRoute } from "@/components/auth/protected-route";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function RoomDetailPage() {
   const params = useParams<{ id: string }>();
   const roomId = Number(params.id);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
 
   const roomQuery = useQuery({
     queryKey: ["rooms", roomId],
@@ -58,6 +61,15 @@ export default function RoomDetailPage() {
           <p className="mt-2 text-slate-700">
             View room information and reservations assigned to this room.
           </p>
+
+          {isAdmin && roomQuery.data && (
+            <Link
+              href={`/rooms/${roomId}/edit`}
+              className="mt-4 inline-flex rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50"
+            >
+              Edit room
+            </Link>
+          )}
         </div>
 
         <QueryState

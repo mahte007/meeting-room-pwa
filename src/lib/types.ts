@@ -101,3 +101,10 @@ export type ChangePasswordInput = {
 
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 100;
+
+export type SaveRoomInput = {
+  name: string;
+  capacity: number;
+  location: string;
+  hasProjector: boolean;
+};
