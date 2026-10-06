@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { combineQueries } from "./query-state";
+import { render, screen } from "@testing-library/react";
+import { combineQueries, QueryState } from "./query-state";
+import { setOnline } from "@/test/render";
 
 type FakeQuery = Parameters<typeof combineQueries>[0];
 
@@ -74,6 +76,56 @@ describe("combineQueries", () => {
 
     expect(combineQueries(loaded(), isAdmin && employeesQuery).status).toBe(
       "ready",
+    );
+  });
+});
+
+describe("QueryState", () => {
+  function renderState(state: Parameters<typeof QueryState>[0]["state"]) {
+    return render(
+      <QueryState state={state} loadingText="Loading rooms..." errorTitle="Failed to load rooms." />,
+    );
+  }
+
+  it("shows the loading text", () => {
+    renderState({ status: "loading" });
+
+    expect(screen.getByText("Loading rooms...")).toBeInTheDocument();
+  });
+
+  it("explains that unloaded data needs a connection", () => {
+    renderState({ status: "offline" });
+
+    expect(screen.getByText(/hasn't been loaded on this device yet/)).toBeInTheDocument();
+  });
+
+  it("shows the error title and message", () => {
+    renderState({ status: "error", error: new Error("Room not found.") });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Failed to load rooms.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Room not found.");
+  });
+
+  it("renders nothing for fresh data", () => {
+    const { container } = renderState({ status: "ready", updatedAt: Date.now(), refreshError: null });
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("says how old the data is when it couldn't be refreshed", () => {
+    renderState({ status: "ready", updatedAt: Date.now(), refreshError: new Error("Down") });
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /Couldn't refresh the data. Showing data from/,
+    );
+  });
+
+  it("says how old the data is while offline", () => {
+    setOnline(false);
+    renderState({ status: "ready", updatedAt: Date.now(), refreshError: null });
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /You are offline. Showing data from/,
     );
   });
 });
