@@ -1,8 +1,11 @@
-// Served at /sw.js by src/app/sw.js/route.ts, which replaces the placeholder
-// below with the build id. Every build therefore changes this script's bytes,
-// which is what makes the browser install a new worker. Cache names include
-// the version, so each build also starts with clean caches.
+// Served at /sw.js by src/app/sw.js/route.ts, which replaces the placeholders
+// below at build time. The build id changes this script's bytes on every
+// build, which is what makes the browser install a new worker. Cache names
+// include it, so each build also starts with clean caches.
 const VERSION = "__BUILD_ID__";
+
+// The app's static pages, e.g. ["/", "/rooms", ...], found in src/app.
+const APP_PAGES = "__APP_PAGES__";
 
 // This worker only caches the app shell (pages and static assets). API data
 // is cached by the app itself in IndexedDB (see src/lib/query-persister.ts),
@@ -14,12 +17,58 @@ const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
 
 const OFFLINE_PAGE = "/offline";
 
+// Matches /_next/static/... URLs in a page's HTML, including the ones in
+// Next's inline script data, where quotes are escaped with backslashes.
+const STATIC_ASSET_URL = /\/_next\/static\/[^"'\\\s)]+/g;
+
+/**
+ * Caches a page's HTML and returns the static assets (JS, CSS, fonts) it
+ * needs. Both are needed offline: the HTML alone would show, but never
+ * start, without its scripts.
+ */
+async function precachePage(pagesCache, page) {
+  const response = await fetch(page);
+
+  if (!response.ok) throw new Error(`${page}: ${response.status}`);
+
+  await pagesCache.put(page, response.clone());
+
+  return (await response.text()).match(STATIC_ASSET_URL) ?? [];
+}
+
+/**
+ * Precaches every static page with its assets. Users move around with
+ * client-side navigation, which never requests a page's HTML, so without
+ * this a page reached by clicking (or never visited) wouldn't open offline.
+ */
+async function precacheAppShell() {
+  const pagesCache = await caches.open(PAGES_CACHE);
+  const staticCache = await caches.open(STATIC_CACHE);
+
+  // Required: without the offline page there is no fallback at all.
+  const offlinePageAssets = await precachePage(pagesCache, OFFLINE_PAGE);
+
+  // Best effort from here: one failed file shouldn't stop the install.
+  const results = await Promise.allSettled(
+    APP_PAGES.filter((page) => page !== OFFLINE_PAGE).map((page) =>
+      precachePage(pagesCache, page),
+    ),
+  );
+
+  const assets = new Set([
+    ...offlinePageAssets,
+    ...results.flatMap((result) =>
+      result.status === "fulfilled" ? result.value : [],
+    ),
+  ]);
+
+  await Promise.allSettled([...assets].map((asset) => staticCache.add(asset)));
+}
+
 self.addEventListener("install", (event) => {
   // No skipWaiting() here: the new worker waits until the user accepts the
   // update, so open tabs never run old page code against a new worker.
-  event.waitUntil(
-    caches.open(PAGES_CACHE).then((cache) => cache.add(OFFLINE_PAGE)),
-  );
+  event.waitUntil(precacheAppShell());
 });
 
 self.addEventListener("message", (event) => {

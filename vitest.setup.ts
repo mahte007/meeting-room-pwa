@@ -29,7 +29,8 @@ afterEach(() => {
   cleanup();
   server.resetHandlers();
   resetNavigation();
-  localStorage.clear();
+  // Absent in tests that run in the plain Node environment.
+  globalThis.localStorage?.clear();
 
   // Undo setOnline(false) from src/test/render.tsx.
   delete (navigator as { onLine?: boolean }).onLine;
