@@ -3,22 +3,7 @@
 import { FormEvent, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-
-/**
- * Only allows same-origin paths like "/reservations", so a crafted link such as
- * /login?redirect=https://evil.example can't send the user to another site.
- */
-function getSafeRedirect(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
-  }
-
-  if (value.startsWith("/\\") || value.startsWith("/login")) {
-    return "/";
-  }
-
-  return value;
-}
+import { getSafeRedirect } from "@/lib/redirect";
 
 function LoginForm() {
   const searchParams = useSearchParams();

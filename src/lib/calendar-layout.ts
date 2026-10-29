@@ -35,14 +35,15 @@ export function getDaySegments(
 
     if (end <= dayStart || start >= dayEnd) return [];
 
-    const toMinutes = (date: Date) =>
-      Math.round((date.getTime() - dayStart.getTime()) / 60_000);
+    // Wall-clock minutes, not time elapsed since midnight: on daylight saving
+    // days (23 or 25 hours long) the two differ by an hour.
+    const toMinutes = (date: Date) => date.getHours() * 60 + date.getMinutes();
 
     return [
       {
         reservation,
-        startMinutes: Math.max(0, toMinutes(start)),
-        endMinutes: Math.min(MINUTES_PER_DAY, toMinutes(end)),
+        startMinutes: start <= dayStart ? 0 : toMinutes(start),
+        endMinutes: end >= dayEnd ? MINUTES_PER_DAY : toMinutes(end),
       },
     ];
   });
