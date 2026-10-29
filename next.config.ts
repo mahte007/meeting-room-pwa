@@ -22,6 +22,10 @@ function getBuildId() {
 }
 
 const nextConfig: NextConfig = {
+  // Lets the end-to-end tests build into their own folder (see
+  // playwright.config.ts) without replacing the normal .next build.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+
   env: {
     NEXT_PUBLIC_BUILD_ID: getBuildId(),
   },
